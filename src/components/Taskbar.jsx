@@ -10,6 +10,8 @@ import {
   X 
 } from 'lucide-react';
 import { TB, SN, clampX } from '../utils/constants.js';
+import { NotificationCenter } from './NotificationCenter.jsx';
+import { useSettings } from '../hooks/useSettings.jsx';
 
 /**
  * Taskbar preview popup (shows window preview on hover)
@@ -82,7 +84,9 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax
  */
 export const Taskbar = memo(function Taskbar({ windows, activeId, clock, onWindowClick, onWindowAction }) {
   const [preview, setPreview] = useState({ id: null, cx: 0 });
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const previewTimer = useRef(null);
+  const { settings } = useSettings();
 
   const handleMouseEnter = useCallback((e, winId) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -112,6 +116,14 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock, onWindo
   }, []);
 
   const previewWin = windows.find(w => w.id === preview.id);
+
+  const handleSystemTrayClick = useCallback(() => {
+    setShowNotificationCenter(prev => !prev);
+  }, []);
+
+  const handleCloseNotificationCenter = useCallback(() => {
+    setShowNotificationCenter(false);
+  }, []);
 
   return (
     <>
@@ -158,13 +170,17 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock, onWindo
           ))}
         </div>
         
-        {/* System tray */}
-        <div className="flex items-center gap-3 text-white/80">
-          <Wifi size={18}/>
-          <Volume2 size={18}/>
+        {/* System tray - now clickable */}
+        <button
+          onClick={handleSystemTrayClick}
+          className="flex items-center gap-3 text-white/80 px-2 py-1 rounded hover:bg-white/10 transition-colors"
+          title="Quick Settings"
+        >
+          <Wifi size={18} className={settings.system.wifi ? '' : 'opacity-40'}/>
+          <Volume2 size={18} className={settings.system.volume === 0 ? 'opacity-40' : ''}/>
           <Battery size={18}/>
           <div className="text-sm tabular-nums">{clock}</div>
-        </div>
+        </button>
       </div>
 
       {/* Taskbar preview popup */}
@@ -186,6 +202,12 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock, onWindo
           onMouseLeave={handlePreviewMouseLeave}
         />
       )}
+
+      {/* Notification Center overlay */}
+      <NotificationCenter 
+        isOpen={showNotificationCenter} 
+        onClose={handleCloseNotificationCenter} 
+      />
     </>
   );
 });
