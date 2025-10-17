@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -18,6 +18,7 @@ import {
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useTheme } from '../ThemeContext.jsx';
 import MediaControls from './MediaControls.jsx';
+import eventBus from '../utils/eventBus.js';
 
 /**
  * Notification Center Overlay
@@ -26,10 +27,10 @@ import MediaControls from './MediaControls.jsx';
  * Dismisses on outside click or Escape key
  */
 export function NotificationCenter({ isOpen, onClose }) {
-  const springConfig = { type: 'spring', stiffness: 400, damping: 30, mass: 0.8 };
+  const springConfig = { type: 'spring', stiffness: 600, damping: 25, mass: 0.6 };
 
-  // Mock notifications data
-  const notifications = [
+  // Notifications state
+  const [notifications, setNotifications] = useState([
     {
       id: 1,
       app: 'Email',
@@ -66,7 +67,7 @@ export function NotificationCenter({ isOpen, onClose }) {
       time: '1 hour ago',
       unread: false
     },
-  ];
+  ]);
 
   // Handle Escape key to close
   useEffect(() => {
@@ -78,6 +79,37 @@ export function NotificationCenter({ isOpen, onClose }) {
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
+
+  // Subscribe to notification events
+  useEffect(() => {
+    const unsubscribeNew = eventBus.subscribe(eventBus.TOPICS.NOTIFICATION_NEW, (data) => {
+      setNotifications(prev => [{
+        id: Date.now(),
+        ...data,
+        unread: true,
+        time: 'now'
+      }, ...prev]);
+    });
+
+    const unsubscribeRead = eventBus.subscribe(eventBus.TOPICS.NOTIFICATION_READ, (id) => {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
+    });
+
+    const unsubscribeClear = eventBus.subscribe(eventBus.TOPICS.NOTIFICATION_CLEAR, (id) => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    });
+
+    const unsubscribeClearAll = eventBus.subscribe(eventBus.TOPICS.NOTIFICATION_CLEAR_ALL, () => {
+      setNotifications([]);
+    });
+
+    return () => {
+      unsubscribeNew();
+      unsubscribeRead();
+      unsubscribeClear();
+      unsubscribeClearAll();
+    };
+  }, []);
 
   // Handle backdrop click
   const handleBackdropClick = (e) => {
@@ -106,7 +138,7 @@ export function NotificationCenter({ isOpen, onClose }) {
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -20, opacity: 0 }}
-            transition={{ ...springConfig, delay: 0.05 }}
+            transition={{ ...springConfig, delay: 0.025 }}
             className="h-full grid grid-cols-2 gap-6 p-6"
             onClick={(e) => e.stopPropagation()}
           >
@@ -115,7 +147,7 @@ export function NotificationCenter({ isOpen, onClose }) {
               <motion.div
                 initial={{ y: -10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ ...springConfig, delay: 0.1 }}
+                transition={{ ...springConfig, delay: 0.05 }}
                 className="rounded-lg shadow-2xl border overflow-hidden flex flex-col h-full"
                 style={{
                   backgroundColor: 'var(--theme-surface)',
@@ -149,6 +181,7 @@ export function NotificationCenter({ isOpen, onClose }) {
                     className="p-2 rounded hover:bg-white/10 transition-colors"
                     style={{ color: 'var(--theme-text)' }}
                     title="Clear all"
+                    onClick={() => eventBus.publish(eventBus.TOPICS.NOTIFICATION_CLEAR_ALL)}
                   >
                     <Trash2 size={18} />
                   </button>
@@ -172,10 +205,15 @@ export function NotificationCenter({ isOpen, onClose }) {
                           key={notif.id}
                           initial={{ x: -20, opacity: 0 }}
                           animate={{ x: 0, opacity: 1 }}
-                          transition={{ ...springConfig, delay: 0.15 + index * 0.05 }}
+                          transition={{ ...springConfig, delay: 0.075 + index * 0.025 }}
                           className="p-4 hover:bg-white/5 transition-colors cursor-pointer"
                           style={{
                             backgroundColor: notif.unread ? 'rgba(var(--theme-accent-rgb, 59, 130, 246), 0.05)' : 'transparent'
+                          }}
+                          onClick={() => {
+                            if (notif.unread) {
+                              eventBus.publish(eventBus.TOPICS.NOTIFICATION_READ, notif.id);
+                            }
                           }}
                         >
                           <div className="flex gap-3">
@@ -250,7 +288,7 @@ export function NotificationCenter({ isOpen, onClose }) {
               <motion.div
                 initial={{ y: -10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ ...springConfig, delay: 0.1 }}
+                transition={{ ...springConfig, delay: 0.05 }}
               >
                 <MediaControls />
               </motion.div>
@@ -259,7 +297,7 @@ export function NotificationCenter({ isOpen, onClose }) {
               <motion.div
                 initial={{ y: -10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ ...springConfig, delay: 0.15 }}
+                transition={{ ...springConfig, delay: 0.075 }}
                 className="rounded-lg shadow-2xl border overflow-hidden flex flex-col flex-1"
                 style={{
                   backgroundColor: 'var(--theme-surface)',
@@ -276,7 +314,7 @@ export function NotificationCenter({ isOpen, onClose }) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.15 }}
             className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
           >
             <div 
@@ -301,7 +339,7 @@ export function NotificationCenter({ isOpen, onClose }) {
 function QuickSettingsPanel() {
   const { settings, updateSetting } = useSettings();
   const { currentTheme, setTheme } = useTheme();
-  const springConfig = { type: 'spring', stiffness: 400, damping: 30, mass: 0.8 };
+  const springConfig = { type: 'spring', stiffness: 600, damping: 25, mass: 0.6 };
 
   // Toggle handlers
   const toggleWifi = () => updateSetting('system.wifi', !settings.system.wifi);

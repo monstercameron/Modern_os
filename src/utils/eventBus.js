@@ -259,6 +259,10 @@ export const TOPICS = {
   TASKBAR_WINDOW_CLICK: 'taskbar.window.click',
   TASKBAR_WINDOW_ACTION: 'taskbar.window.action',
   
+  // Tile events
+  TILE_LONG_PRESS: 'tile.longPress',
+  TILE_EDIT_EXIT: 'tile.editExit',
+  
   // App events
   APP_LAUNCH: 'app.launch',
   APP_CLOSE: 'app.close',

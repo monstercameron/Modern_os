@@ -20,7 +20,7 @@ import eventBus, { TOPICS } from '../utils/eventBus.js';
 /**
  * Taskbar preview popup (shows window preview on hover)
  */
-const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax, onActivate, onMouseEnter, onMouseLeave }) {
+const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax, onActivate, onCloseWindow, onMouseEnter, onMouseLeave }) {
   const W = 280;
   const top = TB + 1;
   const left = clampX(cx - W / 2, W);
@@ -61,7 +61,7 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax
               {win.sn === SN.FULL ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
             </button>
             <button 
-              onClick={() => { win.onClose(); onClose(); }} 
+              onClick={() => { onCloseWindow(); onClose(); }} 
               className="px-2 py-1 hover:bg-white/10" 
               title="Close"
             >
@@ -90,13 +90,17 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax
 export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
   const [preview, setPreview] = useState({ id: null, cx: 0 });
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [hoveredIcon, setHoveredIcon] = useState(null);
   const previewTimer = useRef(null);
   const { settings } = useSettings();
 
   // Handle window button clicks via event bus
   const handleWindowClick = useCallback((winId, isMinimized, isActive) => {
+    if (showNotificationCenter) {
+      setShowNotificationCenter(false);
+    }
     eventBus.publish(TOPICS.TASKBAR_WINDOW_CLICK, { winId, isMinimized, isActive });
-  }, []);
+  }, [showNotificationCenter]);
 
   // Handle window actions via event bus
   const handleWindowAction = useCallback((winId, action) => {
@@ -139,6 +143,19 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
   const handleCloseNotificationCenter = useCallback(() => {
     setShowNotificationCenter(false);
   }, []);
+
+  const getPopoverContent = (icon) => {
+    switch (icon) {
+      case 'wifi':
+        return settings.system.wifi ? 'Connected to Home Wi-Fi' : 'Wi-Fi Off';
+      case 'volume':
+        return `Volume: ${settings.system.volume}%`;
+      case 'battery':
+        return '87% - About 4 hours remaining';
+      default:
+        return '';
+    }
+  };
 
   return (
     <>
@@ -191,9 +208,27 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
           className="flex items-center gap-3 text-white/80 px-2 py-1 rounded hover:bg-white/10 transition-colors"
           title="Quick Settings"
         >
-          <Wifi size={18} className={settings.system.wifi ? '' : 'opacity-40'}/>
-          <Volume2 size={18} className={settings.system.volume === 0 ? 'opacity-40' : ''}/>
-          <Battery size={18}/>
+          <div 
+            className="relative"
+            onMouseEnter={() => setHoveredIcon('wifi')}
+            onMouseLeave={() => setHoveredIcon(null)}
+          >
+            <Wifi size={18} className={settings.system.wifi ? '' : 'opacity-40'}/>
+          </div>
+          <div 
+            className="relative"
+            onMouseEnter={() => setHoveredIcon('volume')}
+            onMouseLeave={() => setHoveredIcon(null)}
+          >
+            <Volume2 size={18} className={settings.system.volume === 0 ? 'opacity-40' : ''}/>
+          </div>
+          <div 
+            className="relative"
+            onMouseEnter={() => setHoveredIcon('battery')}
+            onMouseLeave={() => setHoveredIcon(null)}
+          >
+            <Battery size={18}/>
+          </div>
           <div className="text-sm tabular-nums">{clock}</div>
         </button>
       </div>
@@ -213,6 +248,7 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
             }
             handleWindowAction(previewWin.id, 'activate');
           }}
+          onCloseWindow={() => handleWindowAction(previewWin.id, 'close')}
           onMouseEnter={handlePreviewMouseEnter}
           onMouseLeave={handlePreviewMouseLeave}
         />
@@ -223,6 +259,18 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
         isOpen={showNotificationCenter} 
         onClose={handleCloseNotificationCenter} 
       />
+
+      {/* Icon hover popover */}
+      {hoveredIcon && (
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 5 }}
+          className="absolute bottom-full right-2 mb-2 px-3 py-2 bg-slate-900 text-white text-sm rounded shadow-lg z-[1500] whitespace-nowrap"
+        >
+          {getPopoverContent(hoveredIcon)}
+        </motion.div>
+      )}
     </>
   );
 });

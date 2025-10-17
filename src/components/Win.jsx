@@ -40,7 +40,7 @@ const ResizeHandle = memo(function ResizeHandle({ position, onResizeStart, disab
   );
 });
 
-export const Win = memo(function Win({ win, on, children, active, setActive }) {
+export const Win = memo(function Win({ win, on, children, active, setActive, app }) {
   const controls = useDragControls();
   const [dragCur, setDragCur] = useState(false); // cursor only while pressed
   const [hv, setHv] = useState(false);
@@ -52,16 +52,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
   const [showSplash, setShowSplash] = useState(true);
   const [animatingFromTile, setAnimatingFromTile] = useState(!!win.tilePosition);
   
-  // Resize state
-  const [resizing, setResizing] = useState(false);
-  const [resizeDir, setResizeDir] = useState(null);
-  const resizeStartPos = useRef({ x: 0, y: 0 });
-  const resizeStartBounds = useRef({ x: 0, y: 0, w: 0, h: 0 });
-  
-  // Min/max size constraints
-  const MIN_WIDTH = 200;
-  const MIN_HEIGHT = 150;
-  
   // Hide splash screen after minimum 100ms
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -69,6 +59,8 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
     }, 100);
     return () => clearTimeout(timer);
   }, []);
+  
+  // Min/max size constraints
 
   const borderCls = win.sn === SN.FULL
     ? "border-0"
@@ -195,7 +187,7 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
         width: win.tilePosition.w,
         height: win.tilePosition.h,
         scale: 1,
-        rotateY: 0
+        rotateY: 180
       };
     }
     return null;
@@ -223,7 +215,7 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
         mass: 0.9 
       } : springConfig)}
       onAnimationComplete={() => setAnimatingFromTile(false)}
-      drag
+      drag={win.sn !== SN.FULL}
       dragMomentum={false}
       dragElastic={0}
       dragListener={false}
@@ -285,7 +277,15 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
         <div className="w-full h-full overflow-auto">{children}</div>
       </div>
       
-      {/* Resize handles - 8 directions */}
+      {/* Splash Screen */}
+      {showSplash && app && (
+        <SplashScreen 
+          title={app.title} 
+          icon={app.icon} 
+          color={app.color} 
+          type={app.splashType || 'logo'} 
+        />
+      )}
       {active && (
         <>
           <ResizeHandle position="n" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />

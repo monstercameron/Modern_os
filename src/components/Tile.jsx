@@ -1,11 +1,14 @@
-import React, { useState, memo, useCallback, useMemo } from "react";
+import React, { useState, memo, useCallback, useMemo, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Plus, Mail, MessageCircle, Calendar, FileText, Image, Cloud } from "lucide-react";
+import eventBus, { TOPICS } from "../utils/eventBus.js";
 
-export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
+export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0, isEditMode = false, onUpdateSize, animatingBadge = false }) {
   const Icon = app.icon;
   const [hv, setHv] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const longPressTimeout = useRef(null);
+  const [longPressed, setLongPressed] = useState(false);
   
   const renderContent = useCallback(() => {
     // Email - show unread count and quick compose
@@ -16,7 +19,15 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <div className="flex-1">
               <div className="font-semibold flex items-center gap-2">
                 {app.title}
-                {badge > 0 && <span className="text-xs bg-white/30 px-1.5 py-0.5 rounded">{badge}</span>}
+                {badge > 0 && (
+                  <motion.span 
+                    className="text-xs bg-white/30 px-1.5 py-0.5 rounded"
+                    animate={animatingBadge ? { scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] } : { scale: 1, rotate: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                  >
+                    {badge}
+                  </motion.span>
+                )}
               </div>
               {badge > 0 && (
                 <div className="text-white/90 text-[10px] mt-1">
@@ -409,6 +420,47 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
       );
     }
     
+    // Photos - recent photos preview
+    if (app.id === 'photos') {
+      const photoIcons = ['📷', '🏖️', '🌄', '🌆', '🎨', '📸', '🖼️', '🎭', '🌅', '🗻'];
+      const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+      
+      useEffect(() => {
+        const interval = setInterval(() => {
+          setCurrentPhotoIndex(prev => (prev + 1) % photoIcons.length);
+        }, 2000);
+        return () => clearInterval(interval);
+      }, []);
+      
+      return (
+        <div className="h-full flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="font-semibold">{app.title}</div>
+              <div className="text-white/70 text-[11px] mt-1">1,234 photos</div>
+            </div>
+            <Image className="opacity-90" size={24} />
+          </div>
+          {hv && (
+            <motion.div 
+              key={currentPhotoIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="grid grid-cols-3 gap-1"
+            >
+              {Array.from({ length: 9 }, (_, i) => (
+                <div key={i} className="aspect-square bg-white/30 grid place-items-center text-[10px]">
+                  {i === 4 ? photoIcons[currentPhotoIndex] : '📷'}
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </div>
+      );
+    }
+    
     // Contacts - frequent contacts
     if (app.id === 'contacts') {
       return (
@@ -468,7 +520,32 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
     );
   }, [app, badge, hv, playing, onQuick]);
 
+  const handlePointerDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    setLongPressed(false);
+    longPressTimeout.current = setTimeout(() => {
+      setLongPressed(true);
+      eventBus.publish(TOPICS.TILE_LONG_PRESS, { appId: app.id });
+    }, 3000);
+  }, [app.id]);
+
+  const handlePointerUp = useCallback((e) => {
+    if (longPressTimeout.current) {
+      clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+  }, []);
+
+  const handleSizeChange = useCallback((cols, rows) => {
+    onUpdateSize(app.id, `col-span-${cols} row-span-${rows}`);
+  }, [onUpdateSize, app.id]);
+
+  const handleDone = useCallback(() => {
+    eventBus.publish(TOPICS.TILE_EDIT_EXIT);
+  }, []);
+
   const handleOpen = useCallback((e) => {
+    if (longPressed) return;
     // Capture tile position for flip animation
     const rect = e.currentTarget.getBoundingClientRect();
     const tilePosition = {
@@ -478,7 +555,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
       h: rect.height
     };
     onOpen(app, { tilePosition });
-  }, [onOpen, app]);
+  }, [onOpen, app, longPressed]);
 
   const handleHoverStart = useCallback(() => setHv(true), []);
   const handleHoverEnd = useCallback(() => setHv(false), []);
@@ -489,6 +566,8 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
   return (
     <motion.div
       onClick={handleOpen}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       onHoverStart={handleHoverStart}
       onHoverEnd={handleHoverEnd}
       whileHover={{ scale: 1.03 }}
@@ -496,13 +575,42 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
       className={`relative ${app.size} ${app.color} overflow-hidden shadow-md border border-black/20 p-3 flex flex-col text-left text-white cursor-pointer`}
     >
       <motion.span
-        className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
-        initial={{ x: "-120%" }}
-        animate={{ x: hv ? "220%" : "-120%" }}
+        className="pointer-events-none absolute inset-y-0 -right-1/3 w-1/3 bg-gradient-to-l from-white/0 via-white/40 to-white/0"
+        initial={{ x: "120%" }}
+        animate={{ x: hv ? "-220%" : "120%" }}
         transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.5 }}
       />
 
       {renderContent()}
+      
+      {isEditMode && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2 p-2"
+        >
+          <div className="text-white text-xs font-semibold mb-1">Resize Tile</div>
+          <div className="grid grid-cols-3 gap-1">
+            {[1,2,3].map(cols => 
+              [1,2,3].map(rows => (
+                <button 
+                  key={`${cols}x${rows}`} 
+                  onClick={() => handleSizeChange(cols, rows)}
+                  className="px-2 py-1 bg-white/20 text-white text-[10px] hover:bg-white/30"
+                >
+                  {cols}x{rows}
+                </button>
+              ))
+            )}
+          </div>
+          <button 
+            onClick={handleDone}
+            className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+          >
+            Done
+          </button>
+        </motion.div>
+      )}
     </motion.div>
   );
 });

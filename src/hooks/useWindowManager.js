@@ -16,9 +16,24 @@ export function useWindowManager() {
   const [wns, setW] = useState([]);
   const [actId, setActId] = useState(null);
   const [badges, setBadges] = useState({ messages: 5, email: 3 });
+  const [animatingBadge, setAnimatingBadge] = useState(null);
   
   // Drag management
   const { drag, primeDrag, handleDrag, endDrag } = useDragManager();
+
+  // Increment email badge every 10 seconds with animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBadges(prev => {
+        const newEmail = prev.email + 1;
+        setAnimatingBadge('email');
+        setTimeout(() => setAnimatingBadge(null), 500); // Clear animation after 500ms
+        return { ...prev, email: newEmail };
+      });
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Ensure there's always an active window
   useEffect(() => {
@@ -235,6 +250,7 @@ export function useWindowManager() {
     actId,
     badges,
     drag,
+    animatingBadge,
     
     // Actions
     setActive,
