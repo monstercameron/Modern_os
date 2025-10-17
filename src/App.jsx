@@ -63,27 +63,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [openA]);
 
-  // Handle window button clicks (minimize/restore/activate) - memoized
-  const handleWindowClick = useCallback((winId, isMinimized, isActive) => {
-    if (isMinimized) {
-      unmin(winId);
-      setActive(winId);
-    } else if (isActive) {
-      act(winId, "min");
-    } else {
-      setActive(winId);
-    }
-  }, [unmin, setActive, act]);
-
-  // Handle window action from taskbar preview - memoized
-  const handleWindowAction = useCallback((winId, action) => {
-    if (action === 'activate') {
-      setActive(winId);
-    } else {
-      act(winId, action);
-    }
-  }, [setActive, act]);
-
   // Memoize visible windows to prevent recalculation on every render
   const visibleWindows = useMemo(() => wns.filter(w => !w.m), [wns]);
 
@@ -93,9 +72,7 @@ export default function App() {
       <Taskbar 
         windows={wns} 
         activeId={actId} 
-        clock={clock} 
-        onWindowClick={handleWindowClick}
-        onWindowAction={handleWindowAction}
+        clock={clock}
       />
 
       {/* Desktop grid */}

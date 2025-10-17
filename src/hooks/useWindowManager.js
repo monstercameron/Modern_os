@@ -42,6 +42,35 @@ export function useWindowManager() {
     }
   }, [wns, actId]);
 
+  // Subscribe to taskbar events for decoupled communication
+  useEffect(() => {
+    // Handle window button clicks from taskbar
+    const unsubscribeClick = eventBus.subscribe(TOPICS.TASKBAR_WINDOW_CLICK, ({ winId, isMinimized, isActive }) => {
+      if (isMinimized) {
+        unmin(winId);
+        setActive(winId);
+      } else if (isActive) {
+        act(winId, "min");
+      } else {
+        setActive(winId);
+      }
+    });
+
+    // Handle window actions from taskbar preview
+    const unsubscribeAction = eventBus.subscribe(TOPICS.TASKBAR_WINDOW_ACTION, ({ winId, action }) => {
+      if (action === 'activate') {
+        setActive(winId);
+      } else {
+        act(winId, action);
+      }
+    });
+
+    return () => {
+      unsubscribeClick();
+      unsubscribeAction();
+    };
+  }, []);
+
   /**
    * Bring window to front (focus z-index)
    */
@@ -106,6 +135,7 @@ export function useWindowManager() {
       z: 1000, 
       m: false, 
       init,
+      tilePosition: init?.tilePosition, // Store tile position for animation
       instanceCount: wns.filter(w => w.appId === app.id).length + 1 
     }]);
     setActive(id); // Set new window as active
@@ -158,6 +188,11 @@ export function useWindowManager() {
       if (type === "dbl") {
         setActive(id);
         return WindowActions.toggleMaximizeWindow(w);
+      }
+      
+      if (type === "resize") {
+        // Update window bounds during resize
+        return { ...w, b: p };
       }
       
       if (type === "prime" || type === "dragStart") {

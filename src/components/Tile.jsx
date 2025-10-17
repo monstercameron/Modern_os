@@ -468,8 +468,16 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
     );
   }, [app, badge, hv, playing, onQuick]);
 
-  const handleOpen = useCallback(() => {
-    onOpen(app);
+  const handleOpen = useCallback((e) => {
+    // Capture tile position for flip animation
+    const rect = e.currentTarget.getBoundingClientRect();
+    const tilePosition = {
+      x: rect.left,
+      y: rect.top,
+      w: rect.width,
+      h: rect.height
+    };
+    onOpen(app, { tilePosition });
   }, [onOpen, app]);
 
   const handleHoverStart = useCallback(() => setHv(true), []);

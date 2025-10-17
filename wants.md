@@ -1,6 +1,3 @@
-simulat eteh same strat for for the taskbar, use pub/sub to connect from taskbar to window controls
-
-next add window resizing
 in click of a tile, create an effect where the time flips and sacles into the window, add a spasl screen until the app is ready minimum if 100ms, so openin g an app will play this quick flip scale animation, and display a spash screen until the app is ready
 lets create a spash screen api and docs for logos, spinners, loaders, terminals,etc
 for the app tile hover, the sheen needs to be on the rights side instead of the center

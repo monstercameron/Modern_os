@@ -12,8 +12,10 @@ import {
 import { TB, SN, clampX } from '../utils/constants.js';
 import { NotificationCenter } from './NotificationCenter.jsx';
 import { useSettings } from '../hooks/useSettings.jsx';
+import eventBus, { TOPICS } from '../utils/eventBus.js';
 
 // Fixed: showQuickSettings error - using showNotificationCenter instead
+// Refactored: Now uses event bus for window control communication
 
 /**
  * Taskbar preview popup (shows window preview on hover)
@@ -83,12 +85,23 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax
 
 /**
  * Top taskbar with window buttons, system tray, and clock
+ * Now decoupled from App.jsx - uses event bus for window control
  */
-export const Taskbar = memo(function Taskbar({ windows, activeId, clock, onWindowClick, onWindowAction }) {
+export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
   const [preview, setPreview] = useState({ id: null, cx: 0 });
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const previewTimer = useRef(null);
   const { settings } = useSettings();
+
+  // Handle window button clicks via event bus
+  const handleWindowClick = useCallback((winId, isMinimized, isActive) => {
+    eventBus.publish(TOPICS.TASKBAR_WINDOW_CLICK, { winId, isMinimized, isActive });
+  }, []);
+
+  // Handle window actions via event bus
+  const handleWindowAction = useCallback((winId, action) => {
+    eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId, action });
+  }, []);
 
   const handleMouseEnter = useCallback((e, winId) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -138,7 +151,7 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock, onWindo
           {windows.map(w => (
             <button
               key={w.id}
-              onClick={() => onWindowClick(w.id, w.m, w.id === activeId)}
+              onClick={() => handleWindowClick(w.id, w.m, w.id === activeId)}
               onMouseEnter={(e) => handleMouseEnter(e, w.id)}
               onMouseLeave={handleMouseLeave}
               className={`relative px-3 py-1.5 text-xs font-medium transition-all duration-200 border ${
@@ -192,13 +205,13 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock, onWindo
           cx={preview.cx}
           onClose={() => setPreview({ id: null, cx: 0 })}
           onMinMax={() => {
-            onWindowAction(previewWin.id, previewWin.sn === SN.FULL ? 'unmax' : 'max');
+            handleWindowAction(previewWin.id, previewWin.sn === SN.FULL ? 'unmax' : 'max');
           }}
           onActivate={() => {
             if (previewWin.m) {
-              onWindowAction(previewWin.id, 'unmin');
+              handleWindowAction(previewWin.id, 'unmin');
             }
-            onWindowAction(previewWin.id, 'activate');
+            handleWindowAction(previewWin.id, 'activate');
           }}
           onMouseEnter={handlePreviewMouseEnter}
           onMouseLeave={handlePreviewMouseLeave}

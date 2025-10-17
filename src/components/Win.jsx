@@ -1,8 +1,44 @@
-import React, { useRef, useState, useCallback, useMemo, memo } from "react";
+import React, { useRef, useState, useCallback, useMemo, memo, useEffect } from "react";
 import { motion, useDragControls } from "framer-motion";
 import { AppWindow, X, Maximize2, Minimize2, ChevronDown } from "lucide-react";
 import { TB, SN } from "../utils/constants.js";
 import { SnapCell, SnapIcon } from "./SnapComponents.jsx";
+import { SplashScreen } from "./SplashScreen.jsx";
+
+// Resize handle component
+const ResizeHandle = memo(function ResizeHandle({ position, onResizeStart, disabled }) {
+  const controls = useDragControls();
+  
+  const positionStyles = {
+    n: 'top-0 left-0 right-0 h-1 cursor-ns-resize',
+    ne: 'top-0 right-0 w-3 h-3 cursor-nesw-resize',
+    e: 'top-0 right-0 bottom-0 w-1 cursor-ew-resize',
+    se: 'bottom-0 right-0 w-3 h-3 cursor-nwse-resize',
+    s: 'bottom-0 left-0 right-0 h-1 cursor-ns-resize',
+    sw: 'bottom-0 left-0 w-3 h-3 cursor-nesw-resize',
+    w: 'top-0 left-0 bottom-0 w-1 cursor-ew-resize',
+    nw: 'top-0 left-0 w-3 h-3 cursor-nwse-resize'
+  };
+
+  if (disabled) return null;
+
+  return (
+    <motion.div
+      className={`absolute ${positionStyles[position]} hover:bg-blue-500/20 z-10`}
+      drag
+      dragMomentum={false}
+      dragElastic={0}
+      dragControls={controls}
+      dragListener={false}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        controls.start(e);
+        onResizeStart(position, e);
+      }}
+    />
+  );
+});
 
 export const Win = memo(function Win({ win, on, children, active, setActive }) {
   const controls = useDragControls();
@@ -11,6 +47,28 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
   const [showSnap, setShowSnap] = useState(false);
   const [showSpin, setShowSpin] = useState(false);
   const hoverTimer = useRef(null);
+  
+  // Splash screen state
+  const [showSplash, setShowSplash] = useState(true);
+  const [animatingFromTile, setAnimatingFromTile] = useState(!!win.tilePosition);
+  
+  // Resize state
+  const [resizing, setResizing] = useState(false);
+  const [resizeDir, setResizeDir] = useState(null);
+  const resizeStartPos = useRef({ x: 0, y: 0 });
+  const resizeStartBounds = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  
+  // Min/max size constraints
+  const MIN_WIDTH = 200;
+  const MIN_HEIGHT = 150;
+  
+  // Hide splash screen after minimum 100ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const borderCls = win.sn === SN.FULL
     ? "border-0"
@@ -34,6 +92,58 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
 
   // Spring animation config for snappy feel (<100ms)
   const springConfig = { type: 'spring', stiffness: 400, damping: 30, mass: 0.8 };
+
+  // Resize handlers
+  const handleResizeStart = useCallback((direction, e) => {
+    e.stopPropagation();
+    setResizing(true);
+    setResizeDir(direction);
+    resizeStartPos.current = { x: e.clientX, y: e.clientY };
+    resizeStartBounds.current = { ...win.b };
+    
+    // Add global mouse move and up listeners
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - resizeStartPos.current.x;
+      const deltaY = moveEvent.clientY - resizeStartPos.current.y;
+      
+      let newBounds = { ...resizeStartBounds.current };
+      
+      // Calculate new bounds based on resize direction
+      if (direction.includes('n')) {
+        const newHeight = resizeStartBounds.current.h - deltaY;
+        if (newHeight >= MIN_HEIGHT) {
+          newBounds.y = resizeStartBounds.current.y + deltaY;
+          newBounds.h = newHeight;
+        }
+      }
+      if (direction.includes('s')) {
+        newBounds.h = Math.max(MIN_HEIGHT, resizeStartBounds.current.h + deltaY);
+      }
+      if (direction.includes('w')) {
+        const newWidth = resizeStartBounds.current.w - deltaX;
+        if (newWidth >= MIN_WIDTH) {
+          newBounds.x = resizeStartBounds.current.x + deltaX;
+          newBounds.w = newWidth;
+        }
+      }
+      if (direction.includes('e')) {
+        newBounds.w = Math.max(MIN_WIDTH, resizeStartBounds.current.w + deltaX);
+      }
+      
+      // Update window bounds via the action handler
+      on('resize', newBounds);
+    };
+    
+    const handleMouseUp = () => {
+      setResizing(false);
+      setResizeDir(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [win.b, on, MIN_WIDTH, MIN_HEIGHT]);
 
   const handleMaxHoverStart = useCallback(() => {
     clearTimeout(hoverTimer.current);
@@ -76,19 +186,43 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
     ...borderStyle
   }), [win.z, borderStyle]);
 
+  // Initial position for tile flip animation
+  const initialPosition = useMemo(() => {
+    if (win.tilePosition && animatingFromTile) {
+      return {
+        left: win.tilePosition.x,
+        top: win.tilePosition.y,
+        width: win.tilePosition.w,
+        height: win.tilePosition.h,
+        scale: 1,
+        rotateY: 0
+      };
+    }
+    return null;
+  }, [win.tilePosition, animatingFromTile]);
+
   const animateStyle = useMemo(() => ({
     left: win.b.x,
     top: win.b.y,
     width: win.b.w,
-    height: win.b.h
+    height: win.b.h,
+    scale: 1,
+    rotateY: 0
   }), [win.b.x, win.b.y, win.b.w, win.b.h]);
 
   return (
     <motion.div
       className={`absolute bg-white ${shadowCls} ${borderCls}`}
       style={baseStyle}
+      initial={initialPosition || animateStyle}
       animate={dragCur ? undefined : animateStyle}
-      transition={dragCur ? undefined : springConfig}
+      transition={dragCur ? undefined : (animatingFromTile ? { 
+        type: 'spring', 
+        stiffness: 350, 
+        damping: 28, 
+        mass: 0.9 
+      } : springConfig)}
+      onAnimationComplete={() => setAnimatingFromTile(false)}
       drag
       dragMomentum={false}
       dragElastic={0}
@@ -150,6 +284,20 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
       <div className="w-full h-[calc(100%-40px)] overflow-hidden">
         <div className="w-full h-full overflow-auto">{children}</div>
       </div>
+      
+      {/* Resize handles - 8 directions */}
+      {active && (
+        <>
+          <ResizeHandle position="n" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+          <ResizeHandle position="ne" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+          <ResizeHandle position="e" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+          <ResizeHandle position="se" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+          <ResizeHandle position="s" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+          <ResizeHandle position="sw" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+          <ResizeHandle position="w" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+          <ResizeHandle position="nw" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+        </>
+      )}
     </motion.div>
   );
 });

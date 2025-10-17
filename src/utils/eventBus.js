@@ -255,6 +255,10 @@ export const TOPICS = {
   WINDOW_RESTORE: 'window.restore',
   WINDOW_SNAP: 'window.snap',
   
+  // Taskbar events
+  TASKBAR_WINDOW_CLICK: 'taskbar.window.click',
+  TASKBAR_WINDOW_ACTION: 'taskbar.window.action',
+  
   // App events
   APP_LAUNCH: 'app.launch',
   APP_CLOSE: 'app.close',
