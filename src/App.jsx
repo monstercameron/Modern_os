@@ -50,6 +50,19 @@ export default function App() {
     setTests(testResults);
   }, []);
 
+  // Ctrl+Shift+Esc keyboard shortcut for Task Manager
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'Escape') {
+        e.preventDefault();
+        openA('taskmgr');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openA]);
+
   // Handle window button clicks (minimize/restore/activate) - memoized
   const handleWindowClick = useCallback((winId, isMinimized, isActive) => {
     if (isMinimized) {

@@ -5,6 +5,7 @@ import { clearBadgeState, acc } from '../utils/appHelpers.js';
 import { useDragManager } from './useDragManager.js';
 import * as WindowActions from './windowActions.js';
 import { isSingleInstance, getMaxInstances } from '../config/manifests.js';
+import eventBus, { TOPICS } from '../utils/eventBus.js';
 
 /**
  * Custom hook for managing desktop windows and badges
@@ -55,7 +56,12 @@ export function useWindowManager() {
   const setActive = (id) => { 
     console.log('Active window changed to:', id);
     setActId(id); 
-    fz(id); 
+    fz(id);
+    
+    // Publish window focus event for Task Manager
+    if (id) {
+      eventBus.publish(TOPICS.WINDOW_FOCUS, { windowId: id });
+    }
   };
 
   /**
@@ -103,12 +109,33 @@ export function useWindowManager() {
       instanceCount: wns.filter(w => w.appId === app.id).length + 1 
     }]);
     setActive(id); // Set new window as active
+    
+    // Publish window open event for Task Manager
+    eventBus.publish(TOPICS.WINDOW_OPEN, {
+      windowId: id,
+      appId: app.id,
+      appName: app.title,
+      minimized: false
+    });
   };
 
   /**
    * Execute window action (close, minimize, maximize, snap, drag)
    */
   const act = (id, type, p) => {
+    // Publish events for Task Manager before state update
+    if (type === "close") {
+      eventBus.publish(TOPICS.WINDOW_CLOSE, { windowId: id });
+    } else if (type === "min") {
+      eventBus.publish(TOPICS.WINDOW_MINIMIZE, { windowId: id });
+    } else if (type === "unmin") {
+      eventBus.publish(TOPICS.WINDOW_RESTORE, { windowId: id });
+    } else if (type === "max") {
+      eventBus.publish(TOPICS.WINDOW_MAXIMIZE, { windowId: id });
+    } else if (type === "unmax") {
+      eventBus.publish(TOPICS.WINDOW_RESTORE, { windowId: id });
+    }
+    
     setW(ws => ws.map(w => {
       if (w.id !== id) return w;
       

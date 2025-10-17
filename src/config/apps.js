@@ -66,6 +66,7 @@ import { PresentationApp } from "../apps/PresentationApp.jsx";
 import { ClockApp } from "../apps/ClockApp.jsx";
 import { NewsApp } from "../apps/NewsApp.jsx";
 import { TileConfiguratorApp } from "../apps/TileConfiguratorApp.jsx";
+import { TaskManagerApp } from "../apps/TaskManagerApp.jsx";
 import { getManifest } from "./manifests.js";
 
 export const APPS = [
@@ -88,8 +89,9 @@ export const APPS = [
   { id: "camera",   title: "Camera",   color: "bg-slate-700", icon: Camera, size: "col-span-1 row-span-1", content: CameraApp, manifest: () => getManifest("camera") },
   { id: "recorder", title: "Recorder", color: "bg-orange-600", icon: Mic, size: "col-span-1 row-span-1", content: AudioRecorderApp, manifest: () => getManifest("recorder") },
   { id: "podcast",  title: "Podcast",  color: "bg-violet-600", icon: Podcast, size: "col-span-1 row-span-1", content: PodcastApp, manifest: () => getManifest("podcast") },
-  { id: "activity", title: "Activity", color: "bg-emerald-600", icon: Activity, size: "col-span-1 row-span-1", content: ActivityMonitorApp, manifest: () => getManifest("activity") },
-  { id: "disk",     title: "Disk",     color: "bg-stone-700", icon: HardDrive, size: "col-span-1 row-span-1", content: DiskUtilityApp, manifest: () => getManifest("disk") },
+  { id: "activity",    title: "Activity Monitor", color: "bg-green-600",   icon: Activity,      size: "col-span-1 row-span-1", content: ActivityMonitorApp, manifest: () => getManifest("activity") },
+  { id: "taskmgr",     title: "Task Manager",    color: "bg-slate-700",    icon: Activity,      size: "col-span-1 row-span-1", content: TaskManagerApp, manifest: () => getManifest("taskmgr") },
+  { id: "disk",        title: "Disk Utility",    color: "bg-slate-600",    icon: HardDrive,     size: "col-span-1 row-span-1", content: DiskUtilityApp, manifest: () => getManifest("disk") },
   { id: "weather",  title: "Weather",  color: "bg-sky-500", icon: Cloud, size: "col-span-1 row-span-1", content: WeatherApp, manifest: () => getManifest("weather") },
   { id: "maps",     title: "Maps",     color: "bg-lime-600", icon: MapPin, size: "col-span-2 row-span-1", content: MapsApp, manifest: () => getManifest("maps") },
   { id: "chat",     title: "Chat",     color: "bg-indigo-500", icon: MessageCircle, size: "col-span-1 row-span-1", content: ChatApp, manifest: () => getManifest("chat") },

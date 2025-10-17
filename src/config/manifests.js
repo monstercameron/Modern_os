@@ -424,6 +424,27 @@ export const APP_MANIFESTS = {
     },
   },
   
+  taskmgr: {
+    id: "taskmgr",
+    title: "Task Manager",
+    permissions: {
+      network: false,
+      storage: false,
+      location: false,
+      camera: false,
+      microphone: false,
+    },
+    features: {
+      notifications: true,
+      background: true,
+      multiWindow: false,
+    },
+    capabilities: {
+      maxInstances: 1,
+      singleInstance: true,
+    },
+  },
+  
   disk: {
     id: "disk",
     title: "Disk",

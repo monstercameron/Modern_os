@@ -1,5 +1,3 @@
-create a task manager that simlate our mock de, it should be able to kill running apps
-
 simulat eteh same strat for for the taskbar, use pub/sub to connect from taskbar to window controls
 
 next add window resizing
@@ -17,3 +15,4 @@ clicking on a taskbar running app when the notif overlay is active should close 
 for some widgets, animate different icons in a slide show ex
 images rotate between preview icons, do atleast 10 icons this way
 email count badge needs to go up by 1 every 10 secs, on count up create a fnun animation, subtle and quick
+make sure the tile shell is using the pub/sub to comm with the taskbar
