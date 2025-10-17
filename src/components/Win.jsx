@@ -15,10 +15,18 @@ export function Win({ win, on, children, active, setActive }) {
   const borderCls = win.sn === SN.FULL
     ? "border-0"
     : active
-      ? "border-6 border-blue-500"
+      ? "border-6"
       : hv
-        ? "border-2 border-white"
-        : "border border-black/20";
+        ? "border-2"
+        : "border";
+
+  const borderStyle = win.sn === SN.FULL
+    ? {}
+    : active
+      ? { borderColor: 'var(--theme-accent)' }
+      : hv
+        ? { borderColor: 'var(--theme-text)' }
+        : { borderColor: 'var(--theme-border)' };
 
   const handleMaxHoverStart = () => {
     clearTimeout(hoverTimer.current);
@@ -35,7 +43,7 @@ export function Win({ win, on, children, active, setActive }) {
   return (
     <motion.div
       className={`absolute bg-white shadow-lg ${borderCls}`}
-      style={{ left: win.b.x, top: win.b.y, width: win.b.w, height: win.b.h, zIndex: win.z, willChange: 'transform' }}
+      style={{ left: win.b.x, top: win.b.y, width: win.b.w, height: win.b.h, zIndex: win.z, willChange: 'transform', ...borderStyle }}
       drag
       dragMomentum={false}
       dragElastic={0}

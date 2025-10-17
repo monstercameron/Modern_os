@@ -265,9 +265,9 @@ export default function App() {
   const unmin = (id) => act(id, "unmin");
 
   return (
-    <div className="relative w-full h-[100vh] font-sans bg-slate-900 text-slate-900 overflow-hidden">
+    <div className="relative w-full h-[100vh] font-sans text-slate-900 overflow-hidden" style={{ backgroundColor: 'var(--theme-background)' }}>
       {/* Taskbar (TOP) */}
-      <div className="absolute top-0 left-0 right-0 h-10 px-3 flex items-center justify-between bg-black/40 border-b border-white/10">
+      <div className="absolute top-0 left-0 right-0 h-10 px-3 flex items-center justify-between border-b" style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
         <div className="flex items-center gap-1 ml-2">
           {wns.map(w => (
             <button
@@ -287,13 +287,30 @@ export default function App() {
               }}
               onMouseEnter={(e)=> { const r = e.currentTarget.getBoundingClientRect(); if (tbTimer.current) { clearTimeout(tbTimer.current); tbTimer.current=null; } setTbPrev({ id: w.id, cx: r.left + r.width/2 }); }}
               onMouseLeave={() => { if (tbTimer.current) clearTimeout(tbTimer.current); tbTimer.current = setTimeout(() => setTbPrev({ id: null, cx: 0 }), 250); }}
-              className={`relative px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+              className={`relative px-3 py-1.5 text-xs font-medium transition-all duration-200 border ${
                 w.m 
-                  ? "bg-slate-600/40 border border-slate-500/50 text-slate-300 italic" 
+                  ? "bg-slate-600/40 border-slate-500/50 text-slate-300 italic" 
                   : w.id === actId 
-                    ? "bg-blue-600/90 border-2 border-blue-400 text-white shadow-lg ring-2 ring-blue-300/50" 
-                    : "bg-white/10 border border-white/20 text-white/90 hover:bg-white/15"
+                    ? "border-blue-400 text-white shadow-lg ring-2 ring-blue-300/50" 
+                    : "border-white/20 text-white/90 hover:bg-white/15"
               }`}
+              style={{
+                backgroundColor: w.m 
+                  ? 'rgba(100, 116, 139, 0.4)' // slate-600/40
+                  : w.id === actId 
+                    ? 'var(--theme-accent)' 
+                    : 'rgba(255, 255, 255, 0.1)', // white/10
+                borderColor: w.m 
+                  ? 'rgba(100, 116, 139, 0.5)' // slate-500/50
+                  : w.id === actId 
+                    ? 'var(--theme-accent)' 
+                    : 'rgba(255, 255, 255, 0.2)', // white/20
+                color: w.m 
+                  ? 'rgb(203, 213, 225)' // slate-300
+                  : w.id === actId 
+                    ? 'var(--theme-text)' 
+                    : 'rgba(255, 255, 255, 0.9)' // white/90
+              }}
               title={w.m ? "Minimized - Click to restore" : w.id === actId ? "Active window - Click to minimize" : "Inactive window - Click to activate"}
             >
               {w.t}
@@ -319,8 +336,9 @@ export default function App() {
                onMouseEnter={()=>{ if (tbTimer.current) { clearTimeout(tbTimer.current); tbTimer.current=null; } setTbPrev(p=>({ ...p })); }}
                onMouseLeave={() => { if (tbTimer.current) clearTimeout(tbTimer.current); tbTimer.current = setTimeout(() => setTbPrev({ id: null, cx: 0 }), 200); }}>
             <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-              className="mt-0.5 bg-slate-900 text-white border border-white/20 shadow-lg w-[280px]">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+              className="mt-0.5 border shadow-lg w-[280px]"
+              style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
+              <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border)' }}>
                 <div className="text-xs font-semibold truncate pr-2">{w.t}</div>
                 <div className="flex items-center gap-1">
                   <button 
@@ -392,16 +410,24 @@ export default function App() {
           {drag.targets.map((t) => (
             <div
               key={t.id}
-              className={`absolute ${drag.over===t.id ? 'bg-blue-500/20 border-blue-400' : 'bg-white/10 border-white/30'} border-2`}
-              style={{ left: t.rect.x, top: t.rect.y, width: t.rect.w, height: t.rect.h }}
+              className={`absolute border-2`}
+              style={{
+                left: t.rect.x, top: t.rect.y, width: t.rect.w, height: t.rect.h,
+                backgroundColor: drag.over===t.id ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                borderColor: drag.over===t.id ? 'rgb(59, 130, 246)' : 'rgba(255, 255, 255, 0.3)'
+              }}
             />
           ))}
           {drag.candidate && (() => {
             const c = drag.targets.find((x) => x.id === drag.candidate);
             if (!c) return null;
             return (
-              <div className="absolute border-4 border-blue-500/70 bg-blue-400/10"
-                   style={{ left: c.rect.x, top: c.rect.y, width: c.rect.w, height: c.rect.h }} />
+              <div className="absolute border-4"
+                   style={{
+                     left: c.rect.x, top: c.rect.y, width: c.rect.w, height: c.rect.h,
+                     borderColor: 'rgba(59, 130, 246, 0.7)',
+                     backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                   }} />
             );
           })()}
         </div>

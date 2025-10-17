@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+:root {
+  /* Theme variables - Dark mode by default */
+  --theme-accent: #60a5fa;
+  --theme-background: #1a1a1a;
+  --theme-surface: #2d2d30;
+  --theme-text: #e0e0e0;
+  --theme-border: #3e3e42;
+
+  /* Derived theme colors */
+  --theme-accent-hover: color-mix(in srgb, var(--theme-accent) 80%, white);
+  --theme-surface-hover: color-mix(in srgb, var(--theme-surface) 120%, white);
+  --theme-text-muted: color-mix(in srgb, var(--theme-text) 70%, var(--theme-background));
+}
