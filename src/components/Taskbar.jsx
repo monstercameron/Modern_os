@@ -13,6 +13,8 @@ import { TB, SN, clampX } from '../utils/constants.js';
 import { NotificationCenter } from './NotificationCenter.jsx';
 import { useSettings } from '../hooks/useSettings.jsx';
 
+// Fixed: showQuickSettings error - using showNotificationCenter instead
+
 /**
  * Taskbar preview popup (shows window preview on hover)
  */

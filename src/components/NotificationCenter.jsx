@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useTheme } from '../ThemeContext.jsx';
+import MediaControls from './MediaControls.jsx';
 
 /**
  * Notification Center Overlay
@@ -243,13 +244,23 @@ export function NotificationCenter({ isOpen, onClose }) {
               </motion.div>
             </div>
 
-            {/* Right Column: Quick Settings */}
-            <div className="flex flex-col h-full">
+            {/* Right Column: Media Controls and Quick Settings */}
+            <div className="flex flex-col h-full space-y-4">
+              {/* Media Controls Widget */}
+              <motion.div
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ ...springConfig, delay: 0.1 }}
+              >
+                <MediaControls />
+              </motion.div>
+
+              {/* Quick Settings */}
               <motion.div
                 initial={{ y: -10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ ...springConfig, delay: 0.15 }}
-                className="rounded-lg shadow-2xl border overflow-hidden flex flex-col h-full"
+                className="rounded-lg shadow-2xl border overflow-hidden flex flex-col flex-1"
                 style={{
                   backgroundColor: 'var(--theme-surface)',
                   borderColor: 'var(--theme-border)'

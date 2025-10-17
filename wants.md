@@ -1,4 +1,3 @@
-create a pub/sub system for apps to tap into for them to comm with each other, ex the music player controls should show up in the notif area and they interact via events
 create a task manager that simlate our mock de, it should be able to kill running apps
 
 simulat eteh same strat for for the taskbar, use pub/sub to connect from taskbar to window controls
@@ -13,3 +12,8 @@ quick settins needs to overlay the entire working aread, also show battery detai
 also notif animate too slow needs to be 2x faster
 
 the toficiation list needs to be powered by a pub sub pattern aswell to simulate a real os
+
+clicking on a taskbar running app when the notif overlay is active should close the overlay
+for some widgets, animate different icons in a slide show ex
+images rotate between preview icons, do atleast 10 icons this way
+email count badge needs to go up by 1 every 10 secs, on count up create a fnun animation, subtle and quick
