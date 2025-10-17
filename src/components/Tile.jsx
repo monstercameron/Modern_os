@@ -469,13 +469,13 @@ export function Tile({ app, onOpen, onQuick, badge = 0 }) {
   };
   
   return (
-    <motion.button
+    <motion.div
       onClick={onOpen}
       onHoverStart={() => setHv(true)}
       onHoverEnd={() => setHv(false)}
       whileHover={{ scale: 1.03 }}
       transition={{ duration: 0.12, ease: "easeOut" }}
-      className={`relative ${app.size} ${app.color} overflow-hidden shadow-md border border-black/20 p-3 flex flex-col text-left text-white`}
+      className={`relative ${app.size} ${app.color} overflow-hidden shadow-md border border-black/20 p-3 flex flex-col text-left text-white cursor-pointer`}
     >
       <motion.span
         className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
@@ -485,6 +485,6 @@ export function Tile({ app, onOpen, onQuick, badge = 0 }) {
       />
 
       {renderContent()}
-    </motion.button>
+    </motion.div>
   );
 }
