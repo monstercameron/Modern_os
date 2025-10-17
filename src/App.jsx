@@ -18,6 +18,26 @@ import {
   Minimize2,
   Maximize2,
   X,
+  Calendar,
+  StickyNote,
+  CheckSquare,
+  Calculator,
+  FileType,
+  Image,
+  Camera,
+  Podcast,
+  Activity,
+  HardDrive,
+  Cloud,
+  MapPin,
+  MessageCircle,
+  Users,
+  Code,
+  Database,
+  Brush,
+  Presentation,
+  Clock,
+  Newspaper,
 } from "lucide-react";
 import {
   TB,
@@ -33,6 +53,7 @@ import {
   buildTargetsFor,
   chooseBestTarget,
   ghostFromPoint,
+  overlapRatio,
 } from "./utils/constants.js";
 import { Win } from "./components/Win.jsx";
 import { Tile } from "./components/Tile.jsx";
@@ -47,6 +68,47 @@ import { EmailApp } from "./apps/EmailApp.jsx";
 import { TerminalApp } from "./apps/TerminalApp.jsx";
 import { SettingsApp } from "./apps/SettingsApp.jsx";
 import { StubApp } from "./apps/StubApp.jsx";
+import { CalendarApp } from "./apps/CalendarApp.jsx";
+import { NotesApp } from "./apps/NotesApp.jsx";
+import { TasksApp } from "./apps/TasksApp.jsx";
+import { CalculatorApp } from "./apps/CalculatorApp.jsx";
+import { PDFViewerApp } from "./apps/PDFViewerApp.jsx";
+import { PhotosApp } from "./apps/PhotosApp.jsx";
+import { CameraApp } from "./apps/CameraApp.jsx";
+import { AudioRecorderApp } from "./apps/AudioRecorderApp.jsx";
+import { PodcastApp } from "./apps/PodcastApp.jsx";
+import { ActivityMonitorApp } from "./apps/ActivityMonitorApp.jsx";
+import { DiskUtilityApp } from "./apps/DiskUtilityApp.jsx";
+import { WeatherApp } from "./apps/WeatherApp.jsx";
+import { MapsApp } from "./apps/MapsApp.jsx";
+import { ChatApp } from "./apps/ChatApp.jsx";
+import { VideoCallApp } from "./apps/VideoCallApp.jsx";
+import { ContactsApp } from "./apps/ContactsApp.jsx";
+import { CodeEditorApp } from "./apps/CodeEditorApp.jsx";
+import { DatabaseApp } from "./apps/DatabaseApp.jsx";
+import { DrawingApp } from "./apps/DrawingApp.jsx";
+import { PresentationApp } from "./apps/PresentationApp.jsx";
+import { ClockApp } from "./apps/ClockApp.jsx";
+import { NewsApp } from "./apps/NewsApp.jsx";
+
+const SNAP_OVERLAP_THRESHOLD = 0.3;
+const SNAP_DISTANCE_THRESHOLD = 160;
+
+function evaluateSnap(point, targets) {
+  if (!targets || targets.length === 0) {
+    return { target: null, rect: null };
+  }
+  
+  // Find which zone the pointer is in
+  for (const t of targets) {
+    if (point.x >= t.rect.x && point.x <= t.rect.x + t.rect.w
+      && point.y >= t.rect.y && point.y <= t.rect.y + t.rect.h) {
+      return { target: t, rect: t.rect };
+    }
+  }
+  
+  return { target: null, rect: null };
+}
 
 // ---------- Desktop Environment ----------
 
@@ -63,6 +125,28 @@ export default function App() {
     { id: "files",    title: "Files",    color: "bg-indigo-600",icon: Folder,   size: "col-span-1 row-span-2", content: FilesApp },
     { id: "messages", title: "Messages", color: "bg-cyan-600",  icon: MessageSquare, size: "col-span-1 row-span-1", content: MessagesApp },
     { id: "email",    title: "Email",    color: "bg-red-600",   icon: Mail,          size: "col-span-1 row-span-1", content: EmailApp },
+    { id: "calendar", title: "Calendar", color: "bg-blue-600", icon: Calendar, size: "col-span-1 row-span-1", content: CalendarApp },
+    { id: "notes",    title: "Notes",    color: "bg-yellow-600", icon: StickyNote, size: "col-span-1 row-span-1", content: NotesApp },
+    { id: "tasks",    title: "Tasks",    color: "bg-green-600", icon: CheckSquare, size: "col-span-1 row-span-1", content: TasksApp },
+    { id: "calculator", title: "Calculator", color: "bg-gray-600", icon: Calculator, size: "col-span-1 row-span-1", content: CalculatorApp },
+    { id: "pdf",      title: "PDF",      color: "bg-red-700", icon: FileType, size: "col-span-1 row-span-1", content: PDFViewerApp },
+    { id: "photos",   title: "Photos",   color: "bg-pink-600", icon: Image, size: "col-span-2 row-span-1", content: PhotosApp },
+    { id: "camera",   title: "Camera",   color: "bg-slate-700", icon: Camera, size: "col-span-1 row-span-1", content: CameraApp },
+    { id: "recorder", title: "Recorder", color: "bg-orange-600", icon: Mic, size: "col-span-1 row-span-1", content: AudioRecorderApp },
+    { id: "podcast",  title: "Podcast",  color: "bg-violet-600", icon: Podcast, size: "col-span-1 row-span-1", content: PodcastApp },
+    { id: "activity", title: "Activity", color: "bg-emerald-600", icon: Activity, size: "col-span-1 row-span-1", content: ActivityMonitorApp },
+    { id: "disk",     title: "Disk",     color: "bg-stone-700", icon: HardDrive, size: "col-span-1 row-span-1", content: DiskUtilityApp },
+    { id: "weather",  title: "Weather",  color: "bg-sky-500", icon: Cloud, size: "col-span-1 row-span-1", content: WeatherApp },
+    { id: "maps",     title: "Maps",     color: "bg-lime-600", icon: MapPin, size: "col-span-2 row-span-1", content: MapsApp },
+    { id: "chat",     title: "Chat",     color: "bg-indigo-500", icon: MessageCircle, size: "col-span-1 row-span-1", content: ChatApp },
+    { id: "videocall", title: "Video Call", color: "bg-purple-700", icon: Video, size: "col-span-1 row-span-1", content: VideoCallApp },
+    { id: "contacts", title: "Contacts", color: "bg-fuchsia-600", icon: Users, size: "col-span-1 row-span-1", content: ContactsApp },
+    { id: "code",     title: "Code",     color: "bg-zinc-800", icon: Code, size: "col-span-2 row-span-2", content: CodeEditorApp },
+    { id: "database", title: "Database", color: "bg-cyan-700", icon: Database, size: "col-span-1 row-span-1", content: DatabaseApp },
+    { id: "drawing",  title: "Drawing",  color: "bg-rose-500", icon: Brush, size: "col-span-1 row-span-1", content: DrawingApp },
+    { id: "presentation", title: "Slides", color: "bg-amber-500", icon: Presentation, size: "col-span-1 row-span-1", content: PresentationApp },
+    { id: "clock",    title: "Clock",    color: "bg-neutral-600", icon: Clock, size: "col-span-1 row-span-1", content: ClockApp },
+    { id: "news",     title: "News",     color: "bg-cyan-600", icon: Newspaper, size: "col-span-2 row-span-1", content: NewsApp },
   ];
 
   const [wns, setW] = useState([]);
@@ -70,11 +154,12 @@ export default function App() {
   const [actId, setActId] = useState(null);
   const [badges, setBadges] = useState({ messages: 5, email: 3 });
   const [tests, setTests] = useState({ ran: false, pass: true, list: [] });
-  const [drag, setDrag] = useState({ activeId: null, targets: [], over: null, candidate: null });
+  const [drag, setDrag] = useState({ activeId: null, targets: [], over: null, candidate: null, preview: null });
   const dragRAF = useRef(0);
   const dragPtRef = useRef(null);
   const targetsRef = useRef([]);
   const dragOverRef = useRef(null);
+  const dragPreviewRef = useRef(null);
   const [tbPrev, setTbPrev] = useState({ id: null, cx: 0 });
   const tbTimer = useRef(null);
 
@@ -89,7 +174,7 @@ export default function App() {
     
     if (visibleWindows.length === 0) {
       // No visible windows - clear active window
-      setActId(null);
+      if (actId !== null) setActId(null);
     } else {
       const activeWindowExists = visibleWindows.some(w => w.id === actId);
       if (!activeWindowExists) {
@@ -97,7 +182,10 @@ export default function App() {
         const highestZWindow = visibleWindows.reduce((highest, current) => 
           current.z > highest.z ? current : highest
         );
-        setActive(highestZWindow.id);
+        if (highestZWindow.id !== actId) {
+          setActId(highestZWindow.id);
+          fz(highestZWindow.id);
+        }
       }
     }
   }, [wns, actId]);
@@ -194,16 +282,18 @@ export default function App() {
       if (type === "unmax") return { ...w, sn: w.prevSN ?? SN.NONE, b: w.prevB ?? { ...B0 } };
       if (type === "snap") {
         setActive(id);
-        if (p === SN.LEFT)   return { ...w, sn: SN.LEFT,   b: { x: 0, y: TB, w: window.innerWidth/2, h: window.innerHeight - TB } };
-        if (p === SN.RIGHT)  return { ...w, sn: SN.RIGHT,  b: { x: window.innerWidth/2, y: TB, w: window.innerWidth/2, h: window.innerHeight - TB } };
-        if (p === SN.TOP)    return { ...w, sn: SN.TOP,    b: { x: 0, y: TB, w: window.innerWidth, h: (window.innerHeight - TB) / 2 } };
-        if (p === SN.BOTTOM) return { ...w, sn: SN.BOTTOM, b: bottomRect() };
-        if (p === SN.FULL)   return { ...w, sn: SN.FULL,   b: { x: 0, y: TB, w: window.innerWidth, h: window.innerHeight - TB } };
+        const saveB = (w.sn === SN.NONE) ? w.b : (w.prevB || w.b);
+        if (p === SN.LEFT)   return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.LEFT,   b: { x: 0, y: TB, w: window.innerWidth/2, h: window.innerHeight - TB } };
+        if (p === SN.RIGHT)  return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.RIGHT,  b: { x: window.innerWidth/2, y: TB, w: window.innerWidth/2, h: window.innerHeight - TB } };
+        if (p === SN.TOP)    return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.TOP,    b: { x: 0, y: TB, w: window.innerWidth, h: (window.innerHeight - TB) / 2 } };
+        if (p === SN.BOTTOM) return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.BOTTOM, b: bottomRect() };
+        if (p === SN.FULL)   return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.FULL,   b: { x: 0, y: TB, w: window.innerWidth, h: window.innerHeight - TB } };
         return w;
       }
       if (type === "snapQuad") {
         setActive(id);
-        return { ...w, sn: SN.QUAD, b: qb(p) };
+        const saveB = (w.sn === SN.NONE) ? w.b : (w.prevB || w.b);
+        return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.QUAD, b: qb(p) };
       }
       if (type === "dbl") {
         setActive(id);
@@ -214,14 +304,18 @@ export default function App() {
         const me = ws.find(x => x.id === id) || w;
         const targets = buildTargetsFor(me);
         targetsRef.current = targets;
-        setDrag({ activeId: id, targets, over: null, candidate: null });
+        dragPreviewRef.current = null;
+        dragOverRef.current = null;
+        setDrag({ activeId: id, targets, over: null, candidate: null, preview: null });
         return w;
       }
       if (type === "dragStart") {
         const me = ws.find(x => x.id === id) || w;
         const targets = buildTargetsFor(me);
         targetsRef.current = targets;
-        setDrag({ activeId: id, targets, over: null, candidate: null });
+        dragPreviewRef.current = null;
+        dragOverRef.current = null;
+        setDrag({ activeId: id, targets, over: null, candidate: null, preview: null });
         return w;
       }
       if (type === "drag") {
@@ -232,12 +326,21 @@ export default function App() {
           dragRAF.current = requestAnimationFrame(() => {
             const cur = dragPtRef.current;
             if (!cur) { dragRAF.current = 0; return; }
-            const ghost = ghostFromPoint(w, cur);
-            const best = chooseBestTarget(targetsRef.current, ghost);
-            const over = best ? best.id : null;
-            if (over !== dragOverRef.current) {
+            const { target: snapTarget, rect: snapRect } = evaluateSnap(cur, targetsRef.current);
+            const over = snapTarget ? snapTarget.id : null;
+            const prevRect = dragPreviewRef.current;
+            const rectChanged = (!prevRect && !!snapRect)
+              || (!!prevRect && !snapRect)
+              || (prevRect && snapRect && (
+                prevRect.x !== snapRect.x ||
+                prevRect.y !== snapRect.y ||
+                prevRect.w !== snapRect.w ||
+                prevRect.h !== snapRect.h
+              ));
+            if (over !== dragOverRef.current || rectChanged) {
               dragOverRef.current = over;
-              setDrag(d => (d.activeId === id ? { ...d, over, candidate: over } : d));
+              dragPreviewRef.current = snapRect;
+              setDrag(d => (d.activeId === id ? { ...d, over, candidate: over, preview: snapRect } : d));
             }
             dragRAF.current = 0;
           });
@@ -247,16 +350,19 @@ export default function App() {
       if (type === "dragEnd") {
         if (dragRAF.current) { cancelAnimationFrame(dragRAF.current); dragRAF.current = 0; }
         const targets = drag.targets;
-        const ghost = ghostFromPoint(w, p);
-        const best = drag.candidate ? targets.find((t) => t.id === drag.candidate) : chooseBestTarget(targets, ghost);
-        setDrag({ activeId: null, targets: [], over: null, candidate: null });
+        const { target: best } = evaluateSnap(p, targets);
+        dragPreviewRef.current = null;
+        dragOverRef.current = null;
+        setDrag({ activeId: null, targets: [], over: null, candidate: null, preview: null });
         setTimeout(() => setActive(id), 0);
         if (best) {
-          if (best.type === 'snap')     { setTimeout(() => act(id, 'snap', best.payload), 0); return w; }
-          if (best.type === 'snapQuad') { setTimeout(() => act(id, 'snapQuad', best.payload), 0); return w; }
+          if (best.type === 'snap')     { setTimeout(() => act(id, 'snap', best.payload), 0); }
+          if (best.type === 'snapQuad') { setTimeout(() => act(id, 'snapQuad', best.payload), 0); }
+          return w; // Don't update position, let snap action handle it
         }
-        // float at ghost
-        return { ...w, b: { ...w.b, x: ghost.x, y: ghost.y }, z: 1000 };
+        // float at current position
+        const ghost = ghostFromPoint(w, p);
+        return { ...w, sn: SN.NONE, b: { ...w.b, x: ghost.x, y: ghost.y }, z: 1000 };
       }
       return w;
     }).filter(Boolean));
@@ -386,7 +492,7 @@ export default function App() {
       })()}
 
       {/* Desktop grid */}
-      <div className="absolute inset-x-0 top-10 bottom-0 p-4 grid grid-cols-6 auto-rows-[96px] gap-2">
+      <div className="absolute inset-x-0 top-10 bottom-0 p-4 overflow-y-auto grid grid-cols-6 auto-rows-[96px] gap-2">
         {APPS.map(app => (
           <Tile key={app.id} app={app} badge={(badges && badges[app.id]) || 0} onOpen={() => openA(app)} onQuick={(init) => openA(app, init)} />
         ))}
@@ -406,30 +512,39 @@ export default function App() {
 
       {/* drag snap overlay */}
       {drag.activeId && drag.targets.length > 0 && (
-        <div className="pointer-events-none absolute inset-x-0 top-10 bottom-0 z-[1500]">
-          {drag.targets.map((t) => (
-            <div
-              key={t.id}
-              className={`absolute border-2`}
+        <div className="pointer-events-none absolute left-0 right-0 z-[1500]" style={{ top: 0, bottom: 0 }}>
+          {drag.preview && (
+            <motion.div
+              className="absolute border-2 rounded-sm"
               style={{
-                left: t.rect.x, top: t.rect.y, width: t.rect.w, height: t.rect.h,
-                backgroundColor: drag.over===t.id ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-                borderColor: drag.over===t.id ? 'rgb(59, 130, 246)' : 'rgba(255, 255, 255, 0.3)'
+                borderColor: "var(--theme-accent)",
+                backgroundColor: "var(--theme-accent)",
+                opacity: 0.22,
+                boxShadow: "0 0 0 1px var(--theme-accent)"
               }}
+              initial={false}
+              animate={{ left: drag.preview.x, top: drag.preview.y, width: drag.preview.w, height: drag.preview.h }}
+              transition={{ duration: 0.08, ease: "easeOut" }}
             />
-          ))}
-          {drag.candidate && (() => {
-            const c = drag.targets.find((x) => x.id === drag.candidate);
-            if (!c) return null;
+          )}
+          {drag.targets.map((t) => {
+            if (drag.over !== t.id) return null;
             return (
-              <div className="absolute border-4"
-                   style={{
-                     left: c.rect.x, top: c.rect.y, width: c.rect.w, height: c.rect.h,
-                     borderColor: 'rgba(59, 130, 246, 0.7)',
-                     backgroundColor: 'rgba(59, 130, 246, 0.1)'
-                   }} />
+              <div
+                key={t.id}
+                className="absolute rounded-sm"
+                style={{
+                  left: t.rect.x,
+                  top: t.rect.y,
+                  width: t.rect.w,
+                  height: t.rect.h,
+                  backgroundColor: 'var(--theme-accent)',
+                  opacity: 0.08,
+                  boxShadow: '0 0 0 1px var(--theme-accent)'
+                }}
+              />
             );
-          })()}
+          })}
         </div>
       )}
 

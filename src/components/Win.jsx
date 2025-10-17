@@ -20,6 +20,10 @@ export function Win({ win, on, children, active, setActive }) {
         ? "border-2"
         : "border";
 
+  const shadowCls = (win.sn === SN.FULL || win.sn === SN.LEFT || win.sn === SN.RIGHT || win.sn === SN.TOP || win.sn === SN.BOTTOM || win.sn === SN.QUAD)
+    ? ""
+    : "shadow-lg";
+
   const borderStyle = win.sn === SN.FULL
     ? {}
     : active
@@ -27,6 +31,8 @@ export function Win({ win, on, children, active, setActive }) {
       : hv
         ? { borderColor: 'var(--theme-text)' }
         : { borderColor: 'var(--theme-border)' };
+
+  const transitionStyle = dragCur ? 'none' : 'left 100ms ease, top 100ms ease, width 100ms ease, height 100ms ease';
 
   const handleMaxHoverStart = () => {
     clearTimeout(hoverTimer.current);
@@ -42,8 +48,8 @@ export function Win({ win, on, children, active, setActive }) {
 
   return (
     <motion.div
-      className={`absolute bg-white shadow-lg ${borderCls}`}
-      style={{ left: win.b.x, top: win.b.y, width: win.b.w, height: win.b.h, zIndex: win.z, willChange: 'transform', ...borderStyle }}
+      className={`absolute bg-white ${shadowCls} ${borderCls}`}
+      style={{ left: win.b.x, top: win.b.y, width: win.b.w, height: win.b.h, zIndex: win.z, willChange: 'transform', transition: transitionStyle, boxSizing: 'border-box', ...borderStyle }}
       drag
       dragMomentum={false}
       dragElastic={0}
@@ -52,7 +58,6 @@ export function Win({ win, on, children, active, setActive }) {
       onMouseEnter={() => setHv(true)}
       onMouseLeave={() => setHv(false)}
       onClick={() => setActive(win.id)}
-      onDoubleClick={() => on("dbl")}
       onDragStart={() => on("dragStart")}
       onDrag={(e, i) => on("drag", { x: i.point.x, y: i.point.y })}
       onDragEnd={(e, i) => { setDragCur(false); on("dragEnd", { x: i.point.x, y: i.point.y }); }}
@@ -60,6 +65,11 @@ export function Win({ win, on, children, active, setActive }) {
       <div
         className={`relative flex items-center justify-between px-3 py-2 select-none ${win.ax} text-white ${dragCur ? 'cursor-move' : 'cursor-default'}`}
         onPointerDownCapture={(e)=>{ if ((e.button ?? 0) !== 0) return; setDragCur(true); controls.start(e); }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (!active) { setActive(win.id); return; }
+          on("dbl");
+        }}
       >
         <div className="text-sm font-semibold flex items-center gap-2">
           {win.icon ? <win.icon size={16} className="opacity-90"/> : <AppWindow size={16}/>} {win.t}
