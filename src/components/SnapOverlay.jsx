@@ -29,7 +29,7 @@ export function SnapOverlay({ drag }) {
             width: drag.preview.w, 
             height: drag.preview.h 
           }}
-          transition={{ duration: 0.08, ease: "easeOut" }}
+          transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.5 }}
         />
       )}
       

@@ -30,6 +30,7 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax
         initial={{ opacity: 0, y: -4 }} 
         animate={{ opacity: 1, y: 0 }} 
         exit={{ opacity: 0, y: -4 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
         className="mt-0.5 border shadow-lg w-[280px]"
         style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
       >

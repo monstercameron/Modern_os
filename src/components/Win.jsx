@@ -32,7 +32,8 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
         ? { borderColor: 'var(--theme-text)' }
         : { borderColor: 'var(--theme-border)' };
 
-  const transitionStyle = dragCur ? 'none' : 'left 100ms ease, top 100ms ease, width 100ms ease, height 100ms ease';
+  // Spring animation config for snappy feel (<100ms)
+  const springConfig = { type: 'spring', stiffness: 400, damping: 30, mass: 0.8 };
 
   const handleMaxHoverStart = useCallback(() => {
     clearTimeout(hoverTimer.current);
@@ -68,22 +69,26 @@ export const Win = memo(function Win({ win, on, children, active, setActive }) {
   }, [active, setActive, win.id, on]);
 
   // Memoize style objects
-  const motionStyle = useMemo(() => ({
+  const baseStyle = useMemo(() => ({
+    zIndex: win.z,
+    willChange: 'transform',
+    boxSizing: 'border-box',
+    ...borderStyle
+  }), [win.z, borderStyle]);
+
+  const animateStyle = useMemo(() => ({
     left: win.b.x,
     top: win.b.y,
     width: win.b.w,
-    height: win.b.h,
-    zIndex: win.z,
-    willChange: 'transform',
-    transition: transitionStyle,
-    boxSizing: 'border-box',
-    ...borderStyle
-  }), [win.b.x, win.b.y, win.b.w, win.b.h, win.z, transitionStyle, borderStyle]);
+    height: win.b.h
+  }), [win.b.x, win.b.y, win.b.w, win.b.h]);
 
   return (
     <motion.div
       className={`absolute bg-white ${shadowCls} ${borderCls}`}
-      style={motionStyle}
+      style={baseStyle}
+      animate={dragCur ? undefined : animateStyle}
+      transition={dragCur ? undefined : springConfig}
       drag
       dragMomentum={false}
       dragElastic={0}

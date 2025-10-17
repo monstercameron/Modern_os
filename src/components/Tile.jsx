@@ -28,7 +28,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Mail className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}}>
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'compose'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 ✉️ Compose New
               </button>
@@ -58,7 +58,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <MessageCircle className="opacity-90" size={24} />
           </div>
           {hv && badge > 0 && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1">⏰ 2 min ago</div>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'reply', contact:'Sarah Johnson'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 💬 Reply to Sarah
@@ -84,7 +84,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <MessageCircle className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1">👥 12 members • 5 new</div>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'openChat', chat:'team-standup'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 💬 Open Chat
@@ -107,7 +107,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Calendar className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1">9:00 Team Meeting</div>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'addEvent'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 ➕ Add Event
@@ -130,7 +130,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Icon className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1">✓ Finish presentation</div>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'addTask'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 ➕ Add Task
@@ -153,7 +153,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <FileText className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1 truncate">📝 Meeting notes...</div>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'newNote'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 ➕ New Note
@@ -206,7 +206,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
               <div className="h-full bg-white/80" style={{width: '52%'}}></div>
             </div>
             {hv && (
-              <motion.button initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'resume', video:'nature-doc'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
+              <motion.button initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'resume', video:'nature-doc'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 ▶️ Continue Watching
               </motion.button>
             )}
@@ -227,7 +227,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Image className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="grid grid-cols-3 gap-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="grid grid-cols-3 gap-1">
               {[1,2,3].map(i=>(
                 <div key={i} className="aspect-square bg-white/30 grid place-items-center text-[10px]">📷</div>
               ))}
@@ -255,7 +255,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Icon className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1">Traffic: Light</div>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'navigate', destination});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 🗺️ Start Navigation
@@ -297,7 +297,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Icon className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1 truncate">📄 Project.docx</div>
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1 truncate">📊 Report.xlsx</div>
             </motion.div>
@@ -320,7 +320,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Icon className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="text-[9px] text-white/80 bg-black/20 px-2 py-1 font-mono">✓ Exit code: 0</div>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'rerun', command:'npm run dev'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 🔄 Re-run Command
@@ -343,7 +343,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Icon className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="flex gap-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="flex gap-1">
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({url:'https://www.msn.com'});}} className="flex-1 px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 MSN
               </button>
@@ -371,7 +371,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Icon className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}}>
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}>
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'openRecent', file:'App.jsx'});}} className="w-full px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 📝 Open Recent
               </button>
@@ -396,7 +396,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Icon className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="space-y-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="space-y-1">
               <div className="h-1 bg-black/30 rounded-full overflow-hidden">
                 <div className="h-full bg-white/80" style={{width: '50%'}}></div>
               </div>
@@ -430,7 +430,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
             <Icon className="opacity-90" size={24} />
           </div>
           {hv && (
-            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} className="flex gap-1">
+            <motion.div initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }} className="flex gap-1">
               <button onClick={(e)=>{e.stopPropagation(); onQuick && onQuick({action:'call', contact:'Sarah Johnson'});}} className="flex-1 px-2 py-1 bg-black/30 border border-white/30 text-[10px] font-medium">
                 📞 Call
               </button>
@@ -448,7 +448,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
       return (
         <div className="h-full flex flex-col justify-between">
           <Icon className="opacity-90" size={28} />
-          <motion.div animate={hv ? { x: 6, scale: 1.02 } : { x: 0, scale: 1 }} transition={{ duration: 0.12, ease: "easeOut" }}>
+          <motion.div animate={hv ? { x: 6, scale: 1.02 } : { x: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}>
             <div className="font-semibold">{app.title}</div>
             <div className="mt-2 p-2 bg-black/15 text-white/80 text-[10px] font-mono leading-snug">project.md — "Metro OS design..."</div>
           </motion.div>
@@ -460,7 +460,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
     return (
       <>
         <Icon className="opacity-90" size={28} />
-        <motion.div animate={hv ? { x: 6, scale: 1.02 } : { x: 0, scale: 1 }} transition={{ duration: 0.12, ease: "easeOut" }}>
+        <motion.div animate={hv ? { x: 6, scale: 1.02 } : { x: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}>
           <div className="font-semibold">{app.title}</div>
           <div className="text-white/70 text-[11px]">Tile</div>
         </motion.div>
@@ -475,20 +475,23 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
   const handleHoverStart = useCallback(() => setHv(true), []);
   const handleHoverEnd = useCallback(() => setHv(false), []);
   
+  // Spring animation config for snappy feel (<100ms)
+  const springConfig = { type: 'spring', stiffness: 400, damping: 30, mass: 0.8 };
+  
   return (
     <motion.div
       onClick={handleOpen}
       onHoverStart={handleHoverStart}
       onHoverEnd={handleHoverEnd}
       whileHover={{ scale: 1.03 }}
-      transition={{ duration: 0.12, ease: "easeOut" }}
+      transition={springConfig}
       className={`relative ${app.size} ${app.color} overflow-hidden shadow-md border border-black/20 p-3 flex flex-col text-left text-white cursor-pointer`}
     >
       <motion.span
         className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
         initial={{ x: "-120%" }}
         animate={{ x: hv ? "220%" : "-120%" }}
-        transition={{ duration: 0.12, ease: "easeOut" }}
+        transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.5 }}
       />
 
       {renderContent()}

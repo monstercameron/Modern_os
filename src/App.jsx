@@ -8,6 +8,7 @@ import { Taskbar } from "./components/Taskbar.jsx";
 import { DesktopGrid } from "./components/DesktopGrid.jsx";
 import { SnapOverlay } from "./components/SnapOverlay.jsx";
 import { Win } from "./components/Win.jsx";
+import { AppErrorBoundary } from "./components/ErrorBoundary.jsx";
 import { StubApp } from "./apps/StubApp.jsx";
 
 // Memoized window wrapper to prevent unnecessary re-renders
@@ -16,9 +17,11 @@ const WindowWrapper = memo(({ win, active, setActive, act, AppComponent }) => {
   
   return (
     <Win win={win} active={active} setActive={setActive} on={handleAction}>
-      <div className="w-full h-full bg-white">
-        <AppComponent init={win.init} />
-      </div>
+      <AppErrorBoundary appId={win.appId} appName={win.t}>
+        <div className="w-full h-full bg-white">
+          <AppComponent init={win.init} />
+        </div>
+      </AppErrorBoundary>
     </Win>
   );
 }, (prevProps, nextProps) => {
