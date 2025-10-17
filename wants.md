@@ -1,7 +1,3 @@
-we need to create a tile spec that talk about tile features such as icons, text, char count, controls, widgets, hide, show, grid snapping, scaling 1x1 2x1 2x2 etc
-we should have a tile app that explain the features with toggles and configs
-add a global registry component that track user prefs and sotre them to local storage for persistence
-add a quick way to delete this state
 add quick and subtle animates to the entire project
 I like springy and sub 100ms animations
 create a standardized way to handle errors and log out only relevant errors

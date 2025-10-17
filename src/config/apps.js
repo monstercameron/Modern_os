@@ -29,6 +29,7 @@ import {
   Presentation,
   Clock,
   Newspaper,
+  Blocks,
 } from "lucide-react";
 
 import { BrowserApp } from "../apps/BrowserApp.jsx";
@@ -64,6 +65,7 @@ import { DrawingApp } from "../apps/DrawingApp.jsx";
 import { PresentationApp } from "../apps/PresentationApp.jsx";
 import { ClockApp } from "../apps/ClockApp.jsx";
 import { NewsApp } from "../apps/NewsApp.jsx";
+import { TileConfiguratorApp } from "../apps/TileConfiguratorApp.jsx";
 import { getManifest } from "./manifests.js";
 
 export const APPS = [
@@ -99,4 +101,5 @@ export const APPS = [
   { id: "presentation", title: "Slides", color: "bg-amber-500", icon: Presentation, size: "col-span-1 row-span-1", content: PresentationApp, manifest: () => getManifest("presentation") },
   { id: "clock",    title: "Clock",    color: "bg-neutral-600", icon: Clock, size: "col-span-1 row-span-1", content: ClockApp, manifest: () => getManifest("clock") },
   { id: "news",     title: "News",     color: "bg-cyan-600", icon: Newspaper, size: "col-span-2 row-span-1", content: NewsApp, manifest: () => getManifest("news") },
+  { id: "tileconfig", title: "Tile Config", color: "bg-gradient-to-br from-indigo-600 to-purple-600", icon: Blocks, size: "col-span-2 row-span-2", content: TileConfiguratorApp, manifest: () => getManifest("tileconfig") },
 ];

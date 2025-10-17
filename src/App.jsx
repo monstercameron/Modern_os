@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
 import { APPS } from "./config/apps.js";
 import { useWindowManager } from "./hooks/useWindowManager.js";
 import { useClock } from "./hooks/useClock.js";
+import { useSettingsShortcuts } from "./hooks/useSettings.jsx";
 import { runSmokeTests } from "./tests/smokeTests.js";
 import { Taskbar } from "./components/Taskbar.jsx";
 import { DesktopGrid } from "./components/DesktopGrid.jsx";
@@ -37,6 +38,7 @@ export default function App() {
   // Use custom hooks for state management
   const { wns, actId, badges, drag, setActive, openA, act, unmin } = useWindowManager();
   const clock = useClock();
+  useSettingsShortcuts(); // Enable Ctrl+Shift+R keyboard shortcut
   const [tests, setTests] = useState({ ran: false, pass: true, list: [] });
 
   // Run smoke tests on mount

@@ -675,6 +675,27 @@ export const APP_MANIFESTS = {
       singleInstance: true,
     },
   },
+  
+  tileconfig: {
+    id: "tileconfig",
+    title: "Tile Configurator",
+    permissions: {
+      network: false,
+      storage: false,
+      location: false,
+      camera: false,
+      microphone: false,
+    },
+    features: {
+      notifications: false,
+      background: false,
+      multiWindow: false,
+    },
+    capabilities: {
+      maxInstances: 1,
+      singleInstance: true,
+    },
+  },
 };
 
 /**
