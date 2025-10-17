@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, memo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Wifi, 
@@ -14,7 +14,7 @@ import { TB, SN, clampX } from '../utils/constants.js';
 /**
  * Taskbar preview popup (shows window preview on hover)
  */
-function TaskbarPreview({ win, cx, onClose, onMinMax, onActivate, onMouseEnter, onMouseLeave }) {
+const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax, onActivate, onMouseEnter, onMouseLeave }) {
   const W = 280;
   const top = TB + 1;
   const left = clampX(cx - W / 2, W);
@@ -74,41 +74,41 @@ function TaskbarPreview({ win, cx, onClose, onMinMax, onActivate, onMouseEnter, 
       </motion.div>
     </div>
   );
-}
+});
 
 /**
  * Top taskbar with window buttons, system tray, and clock
  */
-export function Taskbar({ windows, activeId, clock, onWindowClick, onWindowAction }) {
+export const Taskbar = memo(function Taskbar({ windows, activeId, clock, onWindowClick, onWindowAction }) {
   const [preview, setPreview] = useState({ id: null, cx: 0 });
   const previewTimer = useRef(null);
 
-  const handleMouseEnter = (e, winId) => {
+  const handleMouseEnter = useCallback((e, winId) => {
     const r = e.currentTarget.getBoundingClientRect();
     if (previewTimer.current) {
       clearTimeout(previewTimer.current);
       previewTimer.current = null;
     }
     setPreview({ id: winId, cx: r.left + r.width / 2 });
-  };
+  }, []);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
     previewTimer.current = setTimeout(() => setPreview({ id: null, cx: 0 }), 250);
-  };
+  }, []);
 
-  const handlePreviewMouseEnter = () => {
+  const handlePreviewMouseEnter = useCallback(() => {
     if (previewTimer.current) {
       clearTimeout(previewTimer.current);
       previewTimer.current = null;
     }
     setPreview(p => ({ ...p }));
-  };
+  }, []);
 
-  const handlePreviewMouseLeave = () => {
+  const handlePreviewMouseLeave = useCallback(() => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
     previewTimer.current = setTimeout(() => setPreview({ id: null, cx: 0 }), 200);
-  };
+  }, []);
 
   const previewWin = windows.find(w => w.id === preview.id);
 
@@ -187,4 +187,4 @@ export function Taskbar({ windows, activeId, clock, onWindowClick, onWindowActio
       )}
     </>
   );
-}
+});

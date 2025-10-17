@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, memo, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Plus, Mail, MessageCircle, Calendar, FileText, Image, Cloud } from "lucide-react";
 
-export function Tile({ app, onOpen, onQuick, badge = 0 }) {
+export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0 }) {
   const Icon = app.icon;
   const [hv, setHv] = useState(false);
   const [playing, setPlaying] = useState(false);
   
-  const renderContent = () => {
+  const renderContent = useCallback(() => {
     // Email - show unread count and quick compose
     if (app.id === 'email') {
       return (
@@ -466,13 +466,20 @@ export function Tile({ app, onOpen, onQuick, badge = 0 }) {
         </motion.div>
       </>
     );
-  };
+  }, [app, badge, hv, playing, onQuick]);
+
+  const handleOpen = useCallback(() => {
+    onOpen(app);
+  }, [onOpen, app]);
+
+  const handleHoverStart = useCallback(() => setHv(true), []);
+  const handleHoverEnd = useCallback(() => setHv(false), []);
   
   return (
     <motion.div
-      onClick={onOpen}
-      onHoverStart={() => setHv(true)}
-      onHoverEnd={() => setHv(false)}
+      onClick={handleOpen}
+      onHoverStart={handleHoverStart}
+      onHoverEnd={handleHoverEnd}
       whileHover={{ scale: 1.03 }}
       transition={{ duration: 0.12, ease: "easeOut" }}
       className={`relative ${app.size} ${app.color} overflow-hidden shadow-md border border-black/20 p-3 flex flex-col text-left text-white cursor-pointer`}
@@ -487,4 +494,4 @@ export function Tile({ app, onOpen, onQuick, badge = 0 }) {
       {renderContent()}
     </motion.div>
   );
-}
+});

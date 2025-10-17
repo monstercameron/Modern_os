@@ -1,10 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback, useMemo, memo } from "react";
 import { motion, useDragControls } from "framer-motion";
 import { AppWindow, X, Maximize2, Minimize2, ChevronDown } from "lucide-react";
 import { TB, SN } from "../utils/constants.js";
 import { SnapCell, SnapIcon } from "./SnapComponents.jsx";
 
-export function Win({ win, on, children, active, setActive }) {
+export const Win = memo(function Win({ win, on, children, active, setActive }) {
   const controls = useDragControls();
   const [dragCur, setDragCur] = useState(false); // cursor only while pressed
   const [hv, setHv] = useState(false);
@@ -34,22 +34,56 @@ export function Win({ win, on, children, active, setActive }) {
 
   const transitionStyle = dragCur ? 'none' : 'left 100ms ease, top 100ms ease, width 100ms ease, height 100ms ease';
 
-  const handleMaxHoverStart = () => {
+  const handleMaxHoverStart = useCallback(() => {
     clearTimeout(hoverTimer.current);
     setShowSpin(true);
     hoverTimer.current = setTimeout(() => { setShowSpin(false); setShowSnap(true); }, 500);
-  };
-  const handleMaxHoverEnd = () => {
+  }, []);
+  
+  const handleMaxHoverEnd = useCallback(() => {
     clearTimeout(hoverTimer.current);
     hoverTimer.current = null;
     setShowSpin(false);
     setShowSnap(false);
-  };
+  }, []);
+
+  const handleDragStart = useCallback(() => on("dragStart"), [on]);
+  const handleDrag = useCallback((e, i) => on("drag", { x: i.point.x, y: i.point.y }), [on]);
+  const handleDragEnd = useCallback((e, i) => { 
+    setDragCur(false); 
+    on("dragEnd", { x: i.point.x, y: i.point.y }); 
+  }, [on]);
+  const handleClick = useCallback(() => setActive(win.id), [setActive, win.id]);
+  
+  const handlePointerDown = useCallback((e) => {
+    if ((e.button ?? 0) !== 0) return;
+    setDragCur(true);
+    controls.start(e);
+  }, [controls]);
+  
+  const handleDoubleClick = useCallback((e) => {
+    e.stopPropagation();
+    if (!active) { setActive(win.id); return; }
+    on("dbl");
+  }, [active, setActive, win.id, on]);
+
+  // Memoize style objects
+  const motionStyle = useMemo(() => ({
+    left: win.b.x,
+    top: win.b.y,
+    width: win.b.w,
+    height: win.b.h,
+    zIndex: win.z,
+    willChange: 'transform',
+    transition: transitionStyle,
+    boxSizing: 'border-box',
+    ...borderStyle
+  }), [win.b.x, win.b.y, win.b.w, win.b.h, win.z, transitionStyle, borderStyle]);
 
   return (
     <motion.div
       className={`absolute bg-white ${shadowCls} ${borderCls}`}
-      style={{ left: win.b.x, top: win.b.y, width: win.b.w, height: win.b.h, zIndex: win.z, willChange: 'transform', transition: transitionStyle, boxSizing: 'border-box', ...borderStyle }}
+      style={motionStyle}
       drag
       dragMomentum={false}
       dragElastic={0}
@@ -57,19 +91,15 @@ export function Win({ win, on, children, active, setActive }) {
       dragControls={controls}
       onMouseEnter={() => setHv(true)}
       onMouseLeave={() => setHv(false)}
-      onClick={() => setActive(win.id)}
-      onDragStart={() => on("dragStart")}
-      onDrag={(e, i) => on("drag", { x: i.point.x, y: i.point.y })}
-      onDragEnd={(e, i) => { setDragCur(false); on("dragEnd", { x: i.point.x, y: i.point.y }); }}
+      onClick={handleClick}
+      onDragStart={handleDragStart}
+      onDrag={handleDrag}
+      onDragEnd={handleDragEnd}
     >
       <div
         className={`relative flex items-center justify-between px-3 py-2 select-none ${win.ax} text-white ${dragCur ? 'cursor-move' : 'cursor-default'}`}
-        onPointerDownCapture={(e)=>{ if ((e.button ?? 0) !== 0) return; setDragCur(true); controls.start(e); }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          if (!active) { setActive(win.id); return; }
-          on("dbl");
-        }}
+        onPointerDownCapture={handlePointerDown}
+        onDoubleClick={handleDoubleClick}
       >
         <div className="text-sm font-semibold flex items-center gap-2">
           {win.icon ? <win.icon size={16} className="opacity-90"/> : <AppWindow size={16}/>} {win.t}
@@ -117,4 +147,4 @@ export function Win({ win, on, children, active, setActive }) {
       </div>
     </motion.div>
   );
-}
+});

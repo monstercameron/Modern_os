@@ -4,6 +4,7 @@ import { qb, ghostFromPoint } from '../utils/geometry.js';
 import { clearBadgeState, acc } from '../utils/appHelpers.js';
 import { useDragManager } from './useDragManager.js';
 import * as WindowActions from './windowActions.js';
+import { isSingleInstance, getMaxInstances } from '../config/manifests.js';
 
 /**
  * Custom hook for managing desktop windows and badges
@@ -63,6 +64,28 @@ export function useWindowManager() {
    * @param {Object} init - Initial data for the app (optional)
    */
   const openA = (app, init = {}) => {
+    // Check if app is single instance
+    if (isSingleInstance(app.id)) {
+      const existingWindow = wns.find(w => w.appId === app.id);
+      if (existingWindow) {
+        console.log(`${app.title} is already running (single instance)`);
+        // Unminimize if minimized and bring to front
+        if (existingWindow.m) {
+          act(existingWindow.id, 'unmin');
+        }
+        setActive(existingWindow.id);
+        return;
+      }
+    } else {
+      // Check max instances limit
+      const instances = wns.filter(w => w.appId === app.id).length;
+      const maxInstances = getMaxInstances(app.id);
+      if (instances >= maxInstances) {
+        console.warn(`${app.title} has reached max instances (${maxInstances})`);
+        return;
+      }
+    }
+    
     setBadges(b => clearBadgeState(b, app.id));
     const id = uid();
     const q = qb(wns.length); // snap new window to next quadrant
@@ -76,7 +99,8 @@ export function useWindowManager() {
       sn: SN.NONE, 
       z: 1000, 
       m: false, 
-      init 
+      init,
+      instanceCount: wns.filter(w => w.appId === app.id).length + 1 
     }]);
     setActive(id); // Set new window as active
   };
