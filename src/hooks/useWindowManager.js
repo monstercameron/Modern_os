@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { uid, SN } from '../utils/constants.js';
 import { qb, ghostFromPoint } from '../utils/geometry.js';
 import { clearBadgeState, acc } from '../utils/appHelpers.js';
@@ -20,6 +20,7 @@ export function useWindowManager() {
   
   // Drag management
   const { drag, primeDrag, handleDrag, endDrag } = useDragManager();
+  const snappedThisDrag = useRef(false);
 
   // Increment email badge every 10 seconds with animation
   useEffect(() => {
@@ -192,12 +193,25 @@ export function useWindowManager() {
       
       if (type === "snap") {
         setActive(id);
-        return WindowActions.snapWindow(w, p);
+        const snapped = WindowActions.snapWindow(w, p);
+        console.log('Window snapped:', { id: w.id, snapType: p, bounds: snapped.b, sn: snapped.sn });
+        return snapped;
       }
       
       if (type === "snapQuad") {
         setActive(id);
-        return WindowActions.snapQuadWindow(w, p);
+        const snapped = WindowActions.snapQuadWindow(w, p);
+        console.log('Window snapQuad:', { id: w.id, quadrant: p, bounds: snapped.b, sn: snapped.sn });
+        return snapped;
+      }
+      
+      if (type === "snapToBounds") {
+        setActive(id);
+        // p is the bounds object {x, y, w, h}
+        const saveB = (w.sn === SN.NONE) ? w.b : (w.prevB || w.b);
+        const snapped = { ...w, prevB: saveB, prevSN: w.sn, sn: SN.NONE, b: p };
+        console.log(`Window snapToBounds: id=${w.id}, x=${p.x}, y=${p.y}, w=${p.w}, h=${p.h}`);
+        return snapped;
       }
       
       if (type === "dbl") {
@@ -213,6 +227,7 @@ export function useWindowManager() {
       if (type === "prime" || type === "dragStart") {
         const me = ws.find(x => x.id === id) || w;
         primeDrag(me);
+        snappedThisDrag.current = false;
         return w;
       }
       
@@ -223,15 +238,20 @@ export function useWindowManager() {
       
       if (type === "dragEnd") {
         const best = endDrag(p);
+        console.log('dragEnd:', { windowId: id, point: p, snapResult: best });
         setTimeout(() => setActive(id), 0);
         
-        if (best) {
-          if (best.type === 'snap')     { setTimeout(() => act(id, 'snap', best.payload), 0); }
-          if (best.type === 'snapQuad') { setTimeout(() => act(id, 'snapQuad', best.payload), 0); }
+        if (best && !snappedThisDrag.current) {
+          snappedThisDrag.current = true;
+          console.log('Applying snap:', { type: best.type, payload: best.payload });
+          if (best.type === 'snap')         { setTimeout(() => act(id, 'snap', best.payload), 0); }
+          if (best.type === 'snapQuad')     { setTimeout(() => act(id, 'snapQuad', best.payload), 0); }
+          if (best.type === 'snapToBounds') { setTimeout(() => act(id, 'snapToBounds', best.payload), 0); }
           return w;
         }
         
         const ghost = ghostFromPoint(w, p);
+        console.log('Floating window to:', { x: ghost.x, y: ghost.y });
         return WindowActions.floatWindow(w, ghost.x, ghost.y);
       }
       

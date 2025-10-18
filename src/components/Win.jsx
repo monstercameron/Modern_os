@@ -61,6 +61,8 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   }, []);
   
   // Min/max size constraints
+  const MIN_WIDTH = 200;
+  const MIN_HEIGHT = 150;
 
   const borderCls = win.sn === SN.FULL
     ? "border-0"
@@ -173,7 +175,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   // Memoize style objects
   const baseStyle = useMemo(() => ({
     zIndex: win.z,
-    willChange: 'transform',
     boxSizing: 'border-box',
     ...borderStyle
   }), [win.z, borderStyle]);
@@ -182,6 +183,8 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   const initialPosition = useMemo(() => {
     if (win.tilePosition && animatingFromTile) {
       return {
+        x: 0,
+        y: 0,
         left: win.tilePosition.x,
         top: win.tilePosition.y,
         width: win.tilePosition.w,
@@ -194,6 +197,8 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   }, [win.tilePosition, animatingFromTile]);
 
   const animateStyle = useMemo(() => ({
+    x: 0,
+    y: 0,
     left: win.b.x,
     top: win.b.y,
     width: win.b.w,
@@ -202,8 +207,11 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
     rotateY: 0
   }), [win.b.x, win.b.y, win.b.w, win.b.h]);
 
+  const divRef = useRef(null);
+
   return (
     <motion.div
+      ref={divRef}
       className={`absolute bg-white ${shadowCls} ${borderCls}`}
       style={baseStyle}
       initial={initialPosition || animateStyle}
@@ -214,7 +222,67 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
         damping: 28, 
         mass: 0.9 
       } : springConfig)}
-      onAnimationComplete={() => setAnimatingFromTile(false)}
+      onAnimationComplete={() => {
+        setAnimatingFromTile(false);
+        try {
+          const el = divRef.current;
+          if (el && el.getBoundingClientRect) {
+            const r = el.getBoundingClientRect();
+            const rectStr = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`;
+            const csEl = window.getComputedStyle ? window.getComputedStyle(el) : null;
+            const elTransform = csEl ? csEl.transform : null;
+            const inlineLeft = el.style.left || null;
+            const inlineTop = el.style.top || null;
+            const scrollX = typeof window.scrollX !== 'undefined' ? window.scrollX : (document.documentElement || {}).scrollLeft || 0;
+            const scrollY = typeof window.scrollY !== 'undefined' ? window.scrollY : (document.documentElement || {}).scrollTop || 0;
+            console.log(`Win animationComplete rect vs bounds id=${win.id} bounds=${win.b.x},${win.b.y},${win.b.w},${win.b.h} rect=${rectStr} elStyleLeft=${inlineLeft} elStyleTop=${inlineTop} elTransform=${elTransform} scroll=${scrollX},${scrollY}`);
+            // If DOM rect doesn't match expected bounds, log ancestor transforms and rects
+            if (Math.round(r.left) !== win.b.x || Math.round(r.top) !== win.b.y) {
+              try {
+                let node = el.parentElement;
+                const ancestors = [];
+                while (node) {
+                  const nr = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+                  const cs = window.getComputedStyle ? window.getComputedStyle(node) : null;
+                  ancestors.push({ tag: node.tagName, id: node.id || null, class: node.className || null, rect: nr ? `${Math.round(nr.left)},${Math.round(nr.top)},${Math.round(nr.width)},${Math.round(nr.height)}` : null, transform: cs ? cs.transform : null });
+                  node = node.parentElement;
+                }
+                console.log('Win ancestor chain (closest->root):', ancestors);
+              } catch (err) {
+                console.error('Error logging ancestors', err);
+              }
+              // Attempt to correct residual transform-based positioning by clearing transform
+              // and setting inline left/top/width/height to the final bounds. Run in RAF
+              // to avoid fighting the layout engine.
+              try {
+                const applyCorrection = () => {
+                  try {
+                    // Forcefully clear any transform (use !important)
+                    el.style.setProperty('transform', 'none', 'important');
+                    // Set inline geometry (use !important to avoid being overridden)
+                    el.style.setProperty('left', `${win.b.x}px`, 'important');
+                    el.style.setProperty('top', `${win.b.y}px`, 'important');
+                    el.style.setProperty('width', `${win.b.w}px`, 'important');
+                    el.style.setProperty('height', `${win.b.h}px`, 'important');
+                    console.log(`Win corrected inline styles id=${win.id} -> left=${el.style.left} top=${el.style.top} w=${el.style.width} h=${el.style.height} (important)`);
+                  } catch (err2) {
+                    console.error('Error applying inline correction', err2);
+                  }
+                };
+
+                // Try immediately in RAF, then again after short delays to beat any later writes
+                requestAnimationFrame(() => applyCorrection());
+                setTimeout(() => applyCorrection(), 40);
+                setTimeout(() => applyCorrection(), 120);
+              } catch (err) {
+                console.error('Error scheduling inline correction', err);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error reading rect', err);
+        }
+      }}
       drag={win.sn !== SN.FULL}
       dragMomentum={false}
       dragElastic={0}
@@ -227,33 +295,35 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
     >
-      <div
-        className={`relative flex items-center justify-between px-3 py-2 select-none ${win.ax} text-white ${dragCur ? 'cursor-move' : 'cursor-default'}`}
-        onPointerDownCapture={handlePointerDown}
-        onDoubleClick={handleDoubleClick}
-      >
-        <div className="text-sm font-semibold flex items-center gap-2">
-          {win.icon ? <win.icon size={16} className="opacity-90"/> : <AppWindow size={16}/>} {win.t}
-        </div>
-        <div className="flex items-center relative">
+      {/* Title bar - compact wrapper around window controls with grab handle */}
+      <div className="absolute top-0 right-0 z-10 flex items-center">
+        {/* Grab handle padding */}
+        <div 
+          className={`select-none ${win.ax} text-white w-12 h-10 ${dragCur ? 'cursor-move' : 'cursor-default'}`}
+          onPointerDownCapture={handlePointerDown}
+          onDoubleClick={handleDoubleClick}
+        ></div>
+        
+        {/* Window controls */}
+        <div className={`flex items-center relative ${win.ax} text-white`}>
           {showSpin && (
             <div className="absolute top-full right-0 mt-1 bg-slate-900 text-white border border-white/20 p-3 z-[2100] grid place-items-center w-40 h-20">
               <div className="animate-spin h-6 w-6 border-2 border-white/30 border-t-white"></div>
             </div>
           )}
-          <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("min"); }} className="px-2 py-1 hover:bg-white/10" title="Minimize">
+          <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("min"); }} className="px-2 py-1 hover:bg-white/10 h-10" title="Minimize">
             <ChevronDown size={16}/>
           </button>
           <button
             onMouseEnter={handleMaxHoverStart}
             onMouseLeave={handleMaxHoverEnd}
             onClick={(e) => { e.stopPropagation(); setActive(win.id); on(win.sn === SN.FULL ? "unmax" : "max"); }}
-            className="px-2 py-1 hover:bg-white/10"
+            className="px-2 py-1 hover:bg-white/10 h-10"
             title={win.sn === SN.FULL ? "Restore / Snap" : "Maximize / Snap"}
           >
             {win.sn === SN.FULL ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("close"); }} className="px-2 py-1 hover:bg-white/10" title="Close"><X size={16}/></button>
+          <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("close"); }} className="px-2 py-1 hover:bg-white/10 h-10" title="Close"><X size={16}/></button>
 
           {showSnap && (
             <div className="absolute top-full right-0 mt-1 bg-slate-900 text-white border border-white/20 p-3 grid grid-cols-6 gap-3 z-[2000] w-[360px]"
@@ -273,7 +343,9 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
           )}
         </div>
       </div>
-      <div className="w-full h-[calc(100%-40px)] overflow-hidden">
+      
+      {/* Window content area - full height */}
+      <div className="w-full h-full overflow-hidden">
         <div className="w-full h-full overflow-auto">{children}</div>
       </div>
       

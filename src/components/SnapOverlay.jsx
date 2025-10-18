@@ -1,57 +1,77 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getSnapZones, SNAP_ZONES } from '../utils/snapZones.js';
+import { TB } from '../utils/constants.js';
 
 /**
  * Drag snap overlay - shows snap zones and preview during window drag
- * Displays animated preview rectangle and highlights active snap zone
+ * Displays snap zone boundaries and animated preview rectangle
  */
 export function SnapOverlay({ drag }) {
-  if (!drag.activeId || drag.targets.length === 0) {
+  if (!drag.activeId) {
     return null;
   }
 
+  // Get screen dimensions
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight - TB;
+  
+  // Get all snap zones (memoized to prevent recalculation)
+  const zones = useMemo(() => getSnapZones(screenWidth, screenHeight), [screenWidth, screenHeight]);
+
   return (
-    <div className="pointer-events-none absolute left-0 right-0 z-[1500]" style={{ top: 0, bottom: 0 }}>
-      {/* Animated preview rectangle */}
-      {drag.preview && (
-        <motion.div
-          className="absolute border-2 rounded-sm"
-          style={{
-            borderColor: "var(--theme-accent)",
-            backgroundColor: "var(--theme-accent)",
-            opacity: 0.22,
-            boxShadow: "0 0 0 1px var(--theme-accent)"
-          }}
-          initial={false}
-          animate={{ 
-            left: drag.preview.x, 
-            top: drag.preview.y, 
-            width: drag.preview.w, 
-            height: drag.preview.h 
-          }}
-          transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.5 }}
-        />
-      )}
-      
-      {/* Highlight active snap zone */}
-      {drag.targets.map((t) => {
-        if (drag.over !== t.id) return null;
-        return (
-          <div
-            key={t.id}
-            className="absolute rounded-sm"
+    <div className="pointer-events-none fixed inset-0 z-[9999]">
+      {/* Show snap zone perimeters after 100ms */}
+      <AnimatePresence>
+        {drag.showOverlay && (
+          <>
+            {Object.entries(zones).map(([zoneName, zone]) => (
+              <motion.div
+                key={zoneName}
+                className="absolute border-2 border-dashed"
+                style={{
+                  left: zone.perimeter.x,
+                  top: zone.perimeter.y,
+                  width: zone.perimeter.width,
+                  height: zone.perimeter.height,
+                  borderColor: drag.over === zoneName ? 'var(--theme-accent)' : 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: drag.over === zoneName ? 'var(--theme-accent)' : 'transparent',
+                  opacity: drag.over === zoneName ? 0.15 : 0.08,
+                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: drag.over === zoneName ? 0.15 : 0.08 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              />
+            ))}
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Animated preview rectangle - shows where window will snap */}
+      <AnimatePresence>
+        {drag.preview && (
+          <motion.div
+            className="absolute border-4 rounded-sm"
             style={{
-              left: t.rect.x,
-              top: t.rect.y,
-              width: t.rect.w,
-              height: t.rect.h,
-              backgroundColor: 'var(--theme-accent)',
-              opacity: 0.08,
-              boxShadow: '0 0 0 1px var(--theme-accent)'
+              borderColor: "var(--theme-accent)",
+              backgroundColor: "var(--theme-accent)",
+              boxShadow: "0 0 30px 6px var(--theme-accent)"
             }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ 
+              left: drag.preview.x, 
+              top: drag.preview.y, 
+              width: drag.preview.w, 
+              height: drag.preview.h,
+              opacity: 0.3,
+              scale: 1
+            }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.5 }}
           />
-        );
-      })}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
