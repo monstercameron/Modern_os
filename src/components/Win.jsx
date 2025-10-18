@@ -5,6 +5,7 @@ import { TB, SN } from "../utils/constants.js";
 import { SnapCell, SnapIcon } from "./SnapComponents.jsx";
 import { SplashScreen } from "./SplashScreen.jsx";
 import { ContextMenu } from "./ContextMenu.jsx";
+import { AboutDialog } from "./AboutDialog.jsx";
 import { useWindowState } from "../hooks/useWindowState.js";
 import { useContextMenu } from "../hooks/useContextMenu.js";
 import { CONTEXT_TYPES, MENU_ACTIONS } from "../utils/contextMenuStateMachine.js";
@@ -51,6 +52,7 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   const [hv, setHv] = useState(false);
   const [showSnap, setShowSnap] = useState(false);
   const [showSpin, setShowSpin] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [resizing, setResizing] = useState(false);
   const [resizeDir, setResizeDir] = useState(null);
   const hoverTimer = useRef(null);
@@ -101,6 +103,9 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
         break;
       case MENU_ACTIONS.SNAP_BOTTOM:
         on('snap', SN.BOTTOM);
+        break;
+      case MENU_ACTIONS.ABOUT:
+        setShowAbout(true);
         break;
       default:
         break;
@@ -424,20 +429,34 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
     >
-      {/* Title bar - compact wrapper around window controls with grab handle */}
+      {/* Title bar - full width with controls on right */}
       <div 
-        className="absolute top-0 right-0 z-10 flex items-center"
+        className="absolute top-0 left-0 right-0 z-10 flex items-center h-10"
         onContextMenu={(e) => handleWindowContextMenu(e)}
       >
-        {/* Grab handle padding */}
+        {/* Center grab handle */}
         <div 
-          className={`select-none ${win.ax} text-white w-12 h-10 ${dragCur ? 'cursor-move' : 'cursor-default'}`}
-          onPointerDownCapture={handlePointerDown}
-          onDoubleClick={handleDoubleClick}
+          className={`select-none flex-1 h-10 ${dragCur ? 'cursor-move' : 'cursor-default'}`}
         ></div>
         
-        {/* Window controls */}
-        <div className={`flex items-center relative ${win.ax} text-white`}>
+        {/* Window controls on right - includes icon and buttons */}
+        <div 
+          className={`flex items-center relative ${win.ax} text-white h-10 ${dragCur ? 'cursor-grabbing' : 'cursor-grab'}`}
+          onPointerDownCapture={handlePointerDown}
+          onDoubleClick={handleDoubleClick}
+        >
+          {/* App icon/logo */}
+          <div className="flex items-center justify-center w-10 h-10">
+            {app && app.icon ? (
+              typeof app.icon === 'string' ? (
+                <span className="text-lg">{app.icon}</span>
+              ) : (
+                <app.icon size={16} />
+              )
+            ) : (
+              <span className="text-lg">□</span>
+            )}
+          </div>
           {showSpin && (
             <div className="absolute top-full right-0 mt-1 bg-slate-900 text-white border border-white/20 p-3 z-[2100] grid place-items-center w-40 h-20">
               <div className="animate-spin h-6 w-6 border-2 border-white/30 border-t-white"></div>
@@ -449,7 +468,7 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
               setActive(win.id); 
               on("min"); 
             }} 
-            className="px-2 py-1 hover:bg-white/10 h-10" 
+            className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer" 
             title="Minimize"
           >
             <ChevronDown size={16}/>
@@ -463,12 +482,12 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
               setActive(win.id); 
               on(windowState.isMaximized ? "unmax" : "max"); 
             }}
-            className="px-2 py-1 hover:bg-white/10 h-10"
+            className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer"
             title={windowState.isMaximized ? "Restore / Snap" : "Maximize / Snap"}
           >
             {windowState.isMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("close"); }} className="px-2 py-1 hover:bg-white/10 h-10" title="Close"><X size={16}/></button>
+          <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("close"); }} className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer" title="Close"><X size={16}/></button>
 
           {showSnap && (
             <div className="absolute top-full right-0 mt-1 bg-slate-900 text-white border border-white/20 p-3 grid grid-cols-6 gap-3 z-[2000] w-[360px]"
@@ -526,6 +545,15 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
           handleWindowAction(item);
         }}
       />
+
+      {/* About Dialog */}
+      {showAbout && app && (
+        <AboutDialog
+          appTitle={app.title}
+          appIcon={app.icon}
+          onClose={() => setShowAbout(false)}
+        />
+      )}
     </motion.div>
   );
 });

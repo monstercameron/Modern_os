@@ -30,10 +30,12 @@ import {
   Clock,
   Newspaper,
   Blocks,
+  Info,
 } from "lucide-react";
 
 import { BrowserApp } from "../apps/BrowserApp.jsx";
 import { TextApp } from "../apps/TextApp.jsx";
+import { AboutApp } from "../apps/AboutApp.jsx";
 import { VoiceApp } from "../apps/VoiceApp.jsx";
 import { FilesApp } from "../apps/FilesApp.jsx";
 import { MusicApp } from "../apps/MusicApp.jsx";
@@ -104,4 +106,5 @@ export const APPS = [
   { id: "clock",    title: "Clock",    color: "bg-neutral-600", icon: Clock, size: "col-span-1 row-span-1", content: ClockApp, splashType: "logo", manifest: () => getManifest("clock") },
   { id: "news",     title: "News",     color: "bg-cyan-600", icon: Newspaper, size: "col-span-2 row-span-1", content: NewsApp, splashType: "spinner", manifest: () => getManifest("news") },
   { id: "tileconfig", title: "Tile Config", color: "bg-gradient-to-br from-indigo-600 to-purple-600", icon: Blocks, size: "col-span-2 row-span-2", content: TileConfiguratorApp, splashType: "logo", manifest: () => getManifest("tileconfig") },
+  { id: "about", title: "About", color: "bg-slate-700", icon: Info, size: "col-span-1 row-span-1", content: AboutApp, splashType: "minimal", manifest: () => getManifest("about") },
 ];

@@ -55,6 +55,7 @@ export const MENU_ACTIONS = {
   SNAP_BOTTOM: 'snapBottom',
   MOVE: 'move',
   RESIZE: 'resize',
+  ABOUT: 'about',
   
   // Taskbar item context
   ACTIVATE: 'activate',
@@ -124,6 +125,7 @@ const CONTEXT_MENU_DEFINITIONS = {
     { id: 'move', label: 'Move', action: MENU_ACTIONS.MOVE, icon: '✥', condition: 'notFullscreen' },
     { id: 'resize', label: 'Resize', action: MENU_ACTIONS.RESIZE, icon: '⤡', condition: 'notFullscreen' },
     { id: 'separator-3', type: 'separator' },
+    { id: 'about', label: 'About', action: MENU_ACTIONS.ABOUT, icon: 'ℹ️' },
     { id: 'close', label: 'Close', action: MENU_ACTIONS.CLOSE, icon: '✕' },
   ],
   

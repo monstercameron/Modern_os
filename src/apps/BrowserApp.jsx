@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Globe } from "lucide-react";
 import { useContextMenu } from "../hooks/useContextMenu.js";
 import { ContextMenu } from "../components/ContextMenu.jsx";
@@ -93,6 +93,14 @@ export function BrowserApp({ init = {} }) {
       handleBrowserContextMenu(e);
     }
   }, [handleBrowserContextMenu, handleBrowserLinkContextMenu]);
+
+  // Subscribe to About event
+  React.useEffect(() => {
+    const unsubscribe = eventBus.subscribe('WINDOW_ABOUT', (data) => {
+      // Window manager will handle opening About window
+    });
+    return unsubscribe;
+  }, []);
 
   return (
     <div className="h-full flex flex-col relative">

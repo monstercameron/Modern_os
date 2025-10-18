@@ -40,7 +40,7 @@ const WindowWrapper = memo(({ win, active, setActive, act, AppComponent, app }) 
 // ---------- Desktop Environment ----------
 export default function App() {
   // Use custom hooks for state management
-  const { wns, actId, badges, drag, animatingBadge, setActive, openA, act, unmin } = useWindowManager();
+  const { wns, actId, badges, drag, animatingBadge, setActive, openA, act, unmin, openAboutWindow } = useWindowManager();
   const clock = useClock();
   useSettingsShortcuts(); // Enable Ctrl+Shift+R keyboard shortcut
   const [tests, setTests] = useState({ ran: false, pass: true, list: [] });
@@ -81,6 +81,15 @@ export default function App() {
       unsubscribe();
       unsubscribeExit();
     };
+  }, []);
+
+  // Subscribe to About window requests (no-op now, handled in Win.jsx)
+  useEffect(() => {
+    const unsubscribe = eventBus.subscribe('WINDOW_ABOUT', (data) => {
+      // About dialog now handled locally in Win.jsx
+      console.log('[App] About dialog handled locally in window component');
+    });
+    return unsubscribe;
   }, []);
 
   // Update tile size

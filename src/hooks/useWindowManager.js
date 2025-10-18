@@ -5,6 +5,7 @@ import { clearBadgeState, acc } from '../utils/appHelpers.js';
 import { useDragManager } from './useDragManager.js';
 import * as WindowActions from './windowActions.js';
 import { isSingleInstance, getMaxInstances } from '../config/manifests.js';
+import { APPS } from '../config/apps.js';
 import eventBus, { TOPICS } from '../utils/eventBus.js';
 
 /**
@@ -325,6 +326,13 @@ export function useWindowManager() {
         return w;
       }).filter(Boolean);
       
+      // If a window was closed, also close its child windows
+      const closedWindowId = updated.length < ws.length ? ws.find(w => !updated.includes(w))?.id : null;
+      if (closedWindowId) {
+        console.log('[useWindowManager.act] Window closed, closing child windows:', closedWindowId);
+        return updated.filter(w => w.parentId !== closedWindowId);
+      }
+      
       console.log('[useWindowManager.act] Updated windows:', updated.length, 'windows total');
       return updated;
     });
@@ -334,6 +342,68 @@ export function useWindowManager() {
    * Unminimize a window
    */
   const unmin = (id) => act(id, "unmin");
+
+  /**
+   * Open an About window as a child of parent window
+   */
+  const openAboutWindow = (parentWindowId, appTitle) => {
+    console.log('[openAboutWindow] Called with:', { parentWindowId, appTitle });
+    const aboutApp = APPS.find(a => a.id === 'about');
+    
+    if (!aboutApp) {
+      console.warn('About app not found in config');
+      return;
+    }
+
+    console.log('[openAboutWindow] Found about app:', aboutApp);
+    const id = uid();
+    const parentWindow = wns.find(w => w.id === parentWindowId);
+    
+    if (!parentWindow) {
+      console.warn('Parent window not found');
+      return;
+    }
+
+    console.log('[openAboutWindow] Creating About window as child of:', parentWindow.t);
+    // Position About window relative to parent - centered on top
+    const parentX = parentWindow.b.x;
+    const parentY = parentWindow.b.y;
+    const parentW = parentWindow.b.w;
+    const parentH = parentWindow.b.h;
+    
+    const aboutWidth = 400;
+    const aboutHeight = 300;
+    const aboutX = parentX + (parentW - aboutWidth) / 2;
+    const aboutY = parentY + (parentH - aboutHeight) / 2;
+
+    const newWindow = {
+      id,
+      appId: 'about',
+      t: `About ${appTitle}`,
+      icon: 'ℹ️',
+      ax: 'bg-slate-700',
+      b: { x: aboutX, y: aboutY, w: aboutWidth, h: aboutHeight },
+      sn: SN.NONE,
+      z: parentWindow.z + 1,
+      m: false,
+      init: { appTitle },
+      parentId: parentWindowId,
+      isChildWindow: true
+    };
+
+    console.log('[openAboutWindow] New window object:', newWindow);
+    setW(ws => [...ws, newWindow]);
+    setActId(id);
+    fz(id);
+
+    eventBus.publish(TOPICS.WINDOW_OPEN, {
+      windowId: id,
+      appId: 'about',
+      appName: `About ${appTitle}`,
+      minimized: false,
+      parentId: parentWindowId
+    });
+  };
 
   return {
     // State
@@ -348,6 +418,7 @@ export function useWindowManager() {
     openA,
     act,
     unmin,
+    openAboutWindow,
     setBadges,
   };
 }
