@@ -46,7 +46,11 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   const [hv, setHv] = useState(false);
   const [showSnap, setShowSnap] = useState(false);
   const [showSpin, setShowSpin] = useState(false);
+  const [resizing, setResizing] = useState(false);
+  const [resizeDir, setResizeDir] = useState(null);
   const hoverTimer = useRef(null);
+  const resizeStartPos = useRef(null);
+  const resizeStartBounds = useRef(null);
   
   // Splash screen state
   const [showSplash, setShowSplash] = useState(true);
@@ -169,6 +173,7 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   const handleDoubleClick = useCallback((e) => {
     e.stopPropagation();
     if (!active) { setActive(win.id); return; }
+    setDragCur(false);  // Reset drag state so animation can play
     on("dbl");
   }, [active, setActive, win.id, on]);
 
@@ -209,13 +214,15 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
 
   const divRef = useRef(null);
 
+  const animateValue = dragCur ? undefined : animateStyle;
+
   return (
     <motion.div
       ref={divRef}
       className={`absolute bg-white ${shadowCls} ${borderCls}`}
       style={baseStyle}
       initial={initialPosition || animateStyle}
-      animate={dragCur ? undefined : animateStyle}
+      animate={animateValue}
       transition={dragCur ? undefined : (animatingFromTile ? { 
         type: 'spring', 
         stiffness: 350, 
@@ -311,13 +318,26 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
               <div className="animate-spin h-6 w-6 border-2 border-white/30 border-t-white"></div>
             </div>
           )}
-          <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("min"); }} className="px-2 py-1 hover:bg-white/10 h-10" title="Minimize">
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              setActive(win.id); 
+              on("min"); 
+            }} 
+            className="px-2 py-1 hover:bg-white/10 h-10" 
+            title="Minimize"
+          >
             <ChevronDown size={16}/>
           </button>
           <button
             onMouseEnter={handleMaxHoverStart}
             onMouseLeave={handleMaxHoverEnd}
-            onClick={(e) => { e.stopPropagation(); setActive(win.id); on(win.sn === SN.FULL ? "unmax" : "max"); }}
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              console.log('[Win.MaxButton] Clicked for window:', win.id, 'current sn:', win.sn, 'will call:', win.sn === SN.FULL ? "unmax" : "max");
+              setActive(win.id); 
+              on(win.sn === SN.FULL ? "unmax" : "max"); 
+            }}
             className="px-2 py-1 hover:bg-white/10 h-10"
             title={win.sn === SN.FULL ? "Restore / Snap" : "Maximize / Snap"}
           >

@@ -19,21 +19,27 @@ export function unminimizeWindow(w) {
 }
 
 export function maximizeWindow(w) {
-  return { 
+  console.log('[maximizeWindow] ▶ Input:', { id: w.id, sn_in: w.sn, b_in: w.b });
+  const result = { 
     ...w, 
     prevB: w.b, 
     prevSN: w.sn, 
     sn: SN.FULL, 
     b: { x: 0, y: TB, w: window.innerWidth, h: window.innerHeight - TB } 
   };
+  console.log('[maximizeWindow] ◀ Output:', { sn_out: result.sn, b_out: result.b, prevB_saved: result.prevB, prevSN_saved: result.prevSN });
+  return result;
 }
 
 export function unmaximizeWindow(w) {
-  return { 
+  console.log('[unmaximizeWindow] ▶ Input:', { id: w.id, sn_in: w.sn, prevB_in: w.prevB, prevSN_in: w.prevSN });
+  const result = { 
     ...w, 
     sn: w.prevSN ?? SN.NONE, 
     b: w.prevB ?? { ...B0 } 
   };
+  console.log('[unmaximizeWindow] ◀ Output:', { sn_out: result.sn, b_out: result.b, used_prevB: !!w.prevB, used_prevSN: !!w.prevSN });
+  return result;
 }
 
 export function snapWindow(w, snapType) {
@@ -76,12 +82,14 @@ export function toggleMaximizeWindow(w) {
       b: w.prevB ?? { ...B0 } 
     };
   }
+  
+  const newBounds = { x: 0, y: TB, w: window.innerWidth, h: window.innerHeight - TB };
   return { 
     ...w, 
     prevB: w.b, 
     prevSN: w.sn, 
     sn: SN.FULL, 
-    b: { x: 0, y: TB, w: window.innerWidth, h: window.innerHeight - TB } 
+    b: newBounds
   };
 }
 

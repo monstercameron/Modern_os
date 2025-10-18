@@ -62,21 +62,28 @@ export function useWindowManager() {
   useEffect(() => {
     // Handle window button clicks from taskbar
     const unsubscribeClick = eventBus.subscribe(TOPICS.TASKBAR_WINDOW_CLICK, ({ winId, isMinimized, isActive }) => {
+      console.log('[useWindowManager] TASKBAR_WINDOW_CLICK event received:', { winId, isMinimized, isActive });
       if (isMinimized) {
+        console.log('[useWindowManager] -> Unminimizing window:', winId);
         unmin(winId);
         setActive(winId);
       } else if (isActive) {
+        console.log('[useWindowManager] -> Minimizing window:', winId);
         act(winId, "min");
       } else {
+        console.log('[useWindowManager] -> Activating window:', winId);
         setActive(winId);
       }
     });
 
     // Handle window actions from taskbar preview
     const unsubscribeAction = eventBus.subscribe(TOPICS.TASKBAR_WINDOW_ACTION, ({ winId, action }) => {
+      console.log('[useWindowManager] TASKBAR_WINDOW_ACTION event received:', { winId, action });
       if (action === 'activate') {
+        console.log('[useWindowManager] -> Activating window:', winId);
         setActive(winId);
       } else {
+        console.log('[useWindowManager] -> Running action:', action, 'for window:', winId);
         act(winId, action);
       }
     });
@@ -182,81 +189,76 @@ export function useWindowManager() {
       eventBus.publish(TOPICS.WINDOW_RESTORE, { windowId: id });
     }
     
-    setW(ws => ws.map(w => {
-      if (w.id !== id) return w;
-      
-      if (type === "close") return WindowActions.closeWindow();
-      if (type === "min")   return WindowActions.minimizeWindow(w);
-      if (type === "unmin") return WindowActions.unminimizeWindow(w);
-      if (type === "max")   return WindowActions.maximizeWindow(w);
-      if (type === "unmax") return WindowActions.unmaximizeWindow(w);
-      
-      if (type === "snap") {
-        setActive(id);
-        const snapped = WindowActions.snapWindow(w, p);
-        console.log('Window snapped:', { id: w.id, snapType: p, bounds: snapped.b, sn: snapped.sn });
-        return snapped;
-      }
-      
-      if (type === "snapQuad") {
-        setActive(id);
-        const snapped = WindowActions.snapQuadWindow(w, p);
-        console.log('Window snapQuad:', { id: w.id, quadrant: p, bounds: snapped.b, sn: snapped.sn });
-        return snapped;
-      }
-      
-      if (type === "snapToBounds") {
-        setActive(id);
-        // p is the bounds object {x, y, w, h}
-        const saveB = (w.sn === SN.NONE) ? w.b : (w.prevB || w.b);
-        const snapped = { ...w, prevB: saveB, prevSN: w.sn, sn: SN.NONE, b: p };
-        console.log(`Window snapToBounds: id=${w.id}, x=${p.x}, y=${p.y}, w=${p.w}, h=${p.h}`);
-        return snapped;
-      }
-      
-      if (type === "dbl") {
-        setActive(id);
-        return WindowActions.toggleMaximizeWindow(w);
-      }
-      
-      if (type === "resize") {
-        // Update window bounds during resize
-        return { ...w, b: p };
-      }
-      
-      if (type === "prime" || type === "dragStart") {
-        const me = ws.find(x => x.id === id) || w;
-        primeDrag(me);
-        snappedThisDrag.current = false;
-        return w;
-      }
-      
-      if (type === "drag") {
-        handleDrag(id, p);
-        return w;
-      }
-      
-      if (type === "dragEnd") {
-        const best = endDrag(p);
-        console.log('dragEnd:', { windowId: id, point: p, snapResult: best });
-        setTimeout(() => setActive(id), 0);
+    setW(ws => {
+      const updated = ws.map(w => {
+        if (w.id !== id) return w;
         
-        if (best && !snappedThisDrag.current) {
-          snappedThisDrag.current = true;
-          console.log('Applying snap:', { type: best.type, payload: best.payload });
-          if (best.type === 'snap')         { setTimeout(() => act(id, 'snap', best.payload), 0); }
-          if (best.type === 'snapQuad')     { setTimeout(() => act(id, 'snapQuad', best.payload), 0); }
-          if (best.type === 'snapToBounds') { setTimeout(() => act(id, 'snapToBounds', best.payload), 0); }
+        if (type === "close") return WindowActions.closeWindow();
+        if (type === "min") return WindowActions.minimizeWindow(w);
+        if (type === "unmin") return WindowActions.unminimizeWindow(w);
+        if (type === "max")   return WindowActions.maximizeWindow(w);
+        if (type === "unmax") return WindowActions.unmaximizeWindow(w);
+        
+        if (type === "snap") {
+          setActive(id);
+          return WindowActions.snapWindow(w, p);
+        }
+        
+        if (type === "snapQuad") {
+          setActive(id);
+          return WindowActions.snapQuadWindow(w, p);
+        }
+        
+        if (type === "snapToBounds") {
+          setActive(id);
+          // p is the bounds object {x, y, w, h}
+          const saveB = (w.sn === SN.NONE) ? w.b : (w.prevB || w.b);
+          return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.NONE, b: p };
+        }
+        
+        if (type === "dbl") {
+          setActive(id);
+          return WindowActions.toggleMaximizeWindow(w);
+        }
+        
+        if (type === "resize") {
+          // Update window bounds during resize
+          return { ...w, b: p };
+        }
+        
+        if (type === "prime" || type === "dragStart") {
+          const me = ws.find(x => x.id === id) || w;
+          primeDrag(me);
+          snappedThisDrag.current = false;
           return w;
         }
         
-        const ghost = ghostFromPoint(w, p);
-        console.log('Floating window to:', { x: ghost.x, y: ghost.y });
-        return WindowActions.floatWindow(w, ghost.x, ghost.y);
-      }
+        if (type === "drag") {
+          handleDrag(id, p);
+          return w;
+        }
+        
+        if (type === "dragEnd") {
+          const best = endDrag(p);
+          setTimeout(() => setActive(id), 0);
+          
+          if (best && !snappedThisDrag.current) {
+            snappedThisDrag.current = true;
+            if (best.type === 'snap')         { setTimeout(() => act(id, 'snap', best.payload), 0); }
+            if (best.type === 'snapQuad')     { setTimeout(() => act(id, 'snapQuad', best.payload), 0); }
+            if (best.type === 'snapToBounds') { setTimeout(() => act(id, 'snapToBounds', best.payload), 0); }
+            return w;
+          }
+          
+          const ghost = ghostFromPoint(w, p);
+          return WindowActions.floatWindow(w, ghost.x, ghost.y);
+        }
+        
+        return w;
+      }).filter(Boolean);
       
-      return w;
-    }).filter(Boolean));
+      return updated;
+    });
   };
 
   /**

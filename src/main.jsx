@@ -1,4 +1,3 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
@@ -11,13 +10,14 @@ import { setupGlobalErrorHandler } from './utils/errorHandler.js'
 setupGlobalErrorHandler();
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <ErrorBoundary context="Root" message="Metro OS failed to load. Please refresh the page.">
-      <SettingsProvider>
-        <ThemeProvider>
-          <App />
-        </ThemeProvider>
-      </SettingsProvider>
-    </ErrorBoundary>
-  </StrictMode>,
+  // StrictMode disabled - causes double-invocation of state updaters in dev mode
+  // which breaks window maximize/minimize logic. Can be re-enabled after refactoring
+  // to use useReducer or making the logic more idempotent.
+  <ErrorBoundary context="Root" message="Metro OS failed to load. Please refresh the page.">
+    <SettingsProvider>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </SettingsProvider>
+  </ErrorBoundary>,
 )
