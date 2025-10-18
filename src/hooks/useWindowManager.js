@@ -84,6 +84,7 @@ export function useWindowManager() {
         setActive(winId);
       } else {
         console.log('[useWindowManager] -> Running action:', action, 'for window:', winId);
+        console.log('[useWindowManager] -> About to call act() with:', { id: winId, type: action, payload: undefined });
         act(winId, action);
       }
     });
@@ -176,40 +177,71 @@ export function useWindowManager() {
    * Execute window action (close, minimize, maximize, snap, drag)
    */
   const act = (id, type, p) => {
+    console.log('[useWindowManager.act] Starting action execution:', { id, type, p, windowCount: wns.length });
+    
     // Publish events for Task Manager before state update
     if (type === "close") {
+      console.log('[useWindowManager.act] Publishing WINDOW_CLOSE event');
       eventBus.publish(TOPICS.WINDOW_CLOSE, { windowId: id });
     } else if (type === "min") {
+      console.log('[useWindowManager.act] Publishing WINDOW_MINIMIZE event');
       eventBus.publish(TOPICS.WINDOW_MINIMIZE, { windowId: id });
     } else if (type === "unmin") {
+      console.log('[useWindowManager.act] Publishing WINDOW_RESTORE event');
       eventBus.publish(TOPICS.WINDOW_RESTORE, { windowId: id });
     } else if (type === "max") {
+      console.log('[useWindowManager.act] Publishing WINDOW_MAXIMIZE event');
       eventBus.publish(TOPICS.WINDOW_MAXIMIZE, { windowId: id });
     } else if (type === "unmax") {
+      console.log('[useWindowManager.act] Publishing WINDOW_RESTORE event for unmax');
       eventBus.publish(TOPICS.WINDOW_RESTORE, { windowId: id });
     }
     
     setW(ws => {
+      console.log('[useWindowManager.act] In setW, processing action:', type, 'for window:', id);
       const updated = ws.map(w => {
-        if (w.id !== id) return w;
+        if (w.id !== id) {
+          console.log('[useWindowManager.act] Skipping window (not target):', w.id);
+          return w;
+        }
         
-        if (type === "close") return WindowActions.closeWindow();
-        if (type === "min") return WindowActions.minimizeWindow(w);
-        if (type === "unmin") return WindowActions.unminimizeWindow(w);
-        if (type === "max")   return WindowActions.maximizeWindow(w);
-        if (type === "unmax") return WindowActions.unmaximizeWindow(w);
+        console.log('[useWindowManager.act] Processing target window:', id, 'with type:', type);
+        
+        if (type === "close") {
+          console.log('[useWindowManager.act] -> Calling closeWindow()');
+          return WindowActions.closeWindow();
+        }
+        if (type === "min") {
+          console.log('[useWindowManager.act] -> Calling minimizeWindow()');
+          return WindowActions.minimizeWindow(w);
+        }
+        if (type === "unmin") {
+          console.log('[useWindowManager.act] -> Calling unminimizeWindow()');
+          return WindowActions.unminimizeWindow(w);
+        }
+        if (type === "max") {
+          console.log('[useWindowManager.act] -> Calling maximizeWindow()');
+          return WindowActions.maximizeWindow(w);
+        }
+        if (type === "unmax") {
+          console.log('[useWindowManager.act] -> Calling unmaximizeWindow()');
+          return WindowActions.unmaximizeWindow(w);
+        }
         
         if (type === "snap") {
+          console.log('[useWindowManager.act] -> Calling snapWindow() with payload:', p);
           setActive(id);
           return WindowActions.snapWindow(w, p);
         }
         
         if (type === "snapQuad") {
+          console.log('[useWindowManager.act] -> Calling snapQuadWindow() with payload:', p);
           setActive(id);
           return WindowActions.snapQuadWindow(w, p);
         }
         
         if (type === "snapToBounds") {
+          console.log('[useWindowManager.act] -> Calling snapToBounds() with payload:', p);
           setActive(id);
           // p is the bounds object {x, y, w, h}
           const saveB = (w.sn === SN.NONE) ? w.b : (w.prevB || w.b);
@@ -217,16 +249,19 @@ export function useWindowManager() {
         }
         
         if (type === "dbl") {
+          console.log('[useWindowManager.act] -> Calling toggleMaximizeWindow()');
           setActive(id);
           return WindowActions.toggleMaximizeWindow(w);
         }
         
         if (type === "resize") {
+          console.log('[useWindowManager.act] -> Calling resize() with payload:', p);
           // Update window bounds during resize
           return { ...w, b: p };
         }
         
         if (type === "prime" || type === "dragStart") {
+          console.log('[useWindowManager.act] -> Starting drag');
           const me = ws.find(x => x.id === id) || w;
           primeDrag(me);
           snappedThisDrag.current = false;
@@ -234,11 +269,13 @@ export function useWindowManager() {
         }
         
         if (type === "drag") {
+          console.log('[useWindowManager.act] -> Dragging with payload:', p);
           handleDrag(id, p);
           return w;
         }
         
         if (type === "dragEnd") {
+          console.log('[useWindowManager.act] -> Drag end with payload:', p);
           const best = endDrag(p);
           setTimeout(() => setActive(id), 0);
           
@@ -257,6 +294,7 @@ export function useWindowManager() {
         return w;
       }).filter(Boolean);
       
+      console.log('[useWindowManager.act] Updated windows:', updated.length, 'windows total');
       return updated;
     });
   };

@@ -4,6 +4,7 @@ import { AppWindow, X, Maximize2, Minimize2, ChevronDown } from "lucide-react";
 import { TB, SN } from "../utils/constants.js";
 import { SnapCell, SnapIcon } from "./SnapComponents.jsx";
 import { SplashScreen } from "./SplashScreen.jsx";
+import eventBus, { TOPICS } from "../utils/eventBus.js";
 
 // Resize handle component
 const ResizeHandle = memo(function ResizeHandle({ position, onResizeStart, disabled }) {
@@ -63,6 +64,54 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
     }, 100);
     return () => clearTimeout(timer);
   }, []);
+  
+  // Subscribe to window actions from taskbar preview via eventBus
+  useEffect(() => {
+    const unsubscribe = eventBus.subscribeFiltered(
+      TOPICS.TASKBAR_WINDOW_ACTION,
+      (data) => {
+        console.log('[Win.subscribeFiltered] Checking if event is for this window:', { 
+          eventWinId: data.winId, 
+          thisWindowId: win.id, 
+          matches: data.winId === win.id 
+        });
+        return data.winId === win.id;
+      },
+      (data) => {
+        console.log('[Win] Received TASKBAR_WINDOW_ACTION event for this window:', data);
+        const { action } = data;
+        console.log('[Win] Action to execute:', action);
+        
+        // Execute the action via the window's action handler
+        if (action === 'activate') {
+          console.log('[Win] Executing activate action - calling setActive(). NOT calling on() since activate is handled by setActive');
+          setActive(win.id);
+        } else if (action === 'min') {
+          console.log('[Win] Executing min action - calling on("min")');
+          on('min');
+        } else if (action === 'unmin') {
+          console.log('[Win] Executing unmin action - calling on("unmin")');
+          on('unmin');
+        } else if (action === 'max') {
+          console.log('[Win] Executing max action - calling on("max")');
+          on('max');
+        } else if (action === 'unmax') {
+          console.log('[Win] Executing unmax action - calling on("unmax")');
+          on('unmax');
+        } else if (action === 'close') {
+          console.log('[Win] Executing close action - calling on("close")');
+          on('close');
+        } else {
+          console.log('[Win] Unknown action received:', action);
+        }
+      }
+    );
+    
+    return () => {
+      console.log('[Win] Unsubscribing from TASKBAR_WINDOW_ACTION for window:', win.id);
+      unsubscribe();
+    };
+  }, [win.id, on, setActive]);
   
   // Min/max size constraints
   const MIN_WIDTH = 200;

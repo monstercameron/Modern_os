@@ -19,8 +19,9 @@ import eventBus, { TOPICS } from '../utils/eventBus.js';
 
 /**
  * Taskbar preview popup (shows window preview on hover)
+ * Connected to eventBus for dark mode styling and action execution
  */
-const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax, onActivate, onCloseWindow, onMouseEnter, onMouseLeave }) {
+const TaskbarPreview = memo(function TaskbarPreview({ win, activeId, cx, onClose, onMinimize, onMinMax, onActivate, onCloseWindow, onMouseEnter, onMouseLeave }) {
   const W = 280;
   const top = TB + 1;
   const left = clampX(cx - W / 2, W);
@@ -44,25 +45,57 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax
           className="flex items-center justify-between px-3 py-2 border-b" 
           style={{ borderColor: 'var(--theme-border)' }}
         >
-          <div className="text-xs font-semibold truncate pr-2">{win.t}</div>
+          <div className="text-xs font-semibold truncate pr-2" style={{ color: 'var(--theme-text)' }}>
+            {win.t}
+          </div>
           <div className="flex items-center gap-1">
+            {/* Minimize/Restore button - connected via pubsub */}
             <button 
-              onClick={() => { onActivate(); onClose(); }} 
-              className="px-2 py-1 hover:bg-white/10" 
-              title={win.m ? "Unminimize" : win.id === win.actId ? "Minimize" : "Activate"}
+              onClick={() => { 
+                if (win.m) {
+                  // Window is minimized - restore it
+                  onActivate();
+                } else if (win.id === activeId) {
+                  // Window is active - minimize it
+                  onMinimize();
+                } else {
+                  // Window is inactive - activate it
+                  onActivate();
+                }
+                onClose(); 
+              }} 
+              className="px-2 py-1 transition-colors"
+              style={{
+                color: 'var(--theme-text)',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              title={win.m ? "Unminimize" : win.id === activeId ? "Minimize" : "Activate"}
             >
               <ChevronDown size={16}/>
             </button>
+            {/* Maximize/Restore button - connected via pubsub */}
             <button 
               onClick={() => { onMinMax(); onClose(); }} 
-              className="px-2 py-1 hover:bg-white/10" 
+              className="px-2 py-1 transition-colors"
+              style={{
+                color: 'var(--theme-text)',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               title={win.sn === SN.FULL ? "Restore" : "Maximize"}
             >
               {win.sn === SN.FULL ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
             </button>
+            {/* Close button - connected via pubsub */}
             <button 
               onClick={() => { onCloseWindow(); onClose(); }} 
-              className="px-2 py-1 hover:bg-white/10" 
+              className="px-2 py-1 transition-colors"
+              style={{
+                color: 'var(--theme-text)',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               title="Close"
             >
               <X size={16}/>
@@ -70,13 +103,13 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, cx, onClose, onMinMax
           </div>
         </div>
         <div 
-          className="relative" 
+          className="relative cursor-pointer" 
           onClick={() => { onActivate(); onClose(); }}
         >
-          <div className="h-[150px] bg-white grid place-items-center text-slate-500 cursor-pointer">
+          <div className="h-[150px] grid place-items-center text-slate-500" style={{ backgroundColor: 'var(--theme-background)' }}>
             <div className="text-xs">Preview</div>
           </div>
-          <div className="absolute inset-0 pointer-events-none border-2 border-white/10"></div>
+          <div className="absolute inset-0 pointer-events-none border-2" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}></div>
         </div>
       </motion.div>
     </div>
@@ -104,6 +137,15 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
 
   // Handle window actions via event bus
   const handleWindowAction = useCallback((winId, action) => {
+    console.log('[Taskbar.handleWindowAction] Publishing TASKBAR_WINDOW_ACTION:', { winId, action });
+    console.log('[Taskbar.handleWindowAction] win object exists:', !!previewWin);
+    console.log('[Taskbar.handleWindowAction] action details:', {
+      winId,
+      action,
+      actionType: typeof action,
+      previewWinId: previewWin?.id,
+      previewWinSn: previewWin?.sn
+    });
     eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId, action });
   }, []);
 
@@ -237,16 +279,34 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
       {previewWin && (
         <TaskbarPreview
           win={previewWin}
+          activeId={activeId}
           cx={preview.cx}
           onClose={() => setPreview({ id: null, cx: 0 })}
+          onMinimize={() => {
+            console.log('[Taskbar] Minimize button clicked, window state:', { id: previewWin.id, minimized: previewWin.m, active: previewWin.id === activeId });
+            handleWindowAction(previewWin.id, 'min');
+          }}
           onMinMax={() => {
-            handleWindowAction(previewWin.id, previewWin.sn === SN.FULL ? 'unmax' : 'max');
+            console.log('[Taskbar] Maximize button clicked, window state:', { id: previewWin.id, minimized: previewWin.m, snapState: previewWin.sn });
+            if (previewWin.m) {
+              // Window is minimized - unminimize first, then maximize
+              console.log('[Taskbar] Window is minimized, unminimizing and then maximizing');
+              handleWindowAction(previewWin.id, 'unmin');
+              // Schedule the maximize action after a short delay to allow unmin to process
+              setTimeout(() => {
+                handleWindowAction(previewWin.id, 'max');
+              }, 0);
+            } else {
+              // Window is not minimized - toggle between max and unmax
+              handleWindowAction(previewWin.id, previewWin.sn === SN.FULL ? 'unmax' : 'max');
+            }
           }}
           onActivate={() => {
             if (previewWin.m) {
               handleWindowAction(previewWin.id, 'unmin');
+            } else {
+              handleWindowAction(previewWin.id, 'activate');
             }
-            handleWindowAction(previewWin.id, 'activate');
           }}
           onCloseWindow={() => handleWindowAction(previewWin.id, 'close')}
           onMouseEnter={handlePreviewMouseEnter}
