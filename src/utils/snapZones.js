@@ -25,20 +25,33 @@ export const SNAP_ZONES = {
 };
 
 // Perimeter threshold in pixels from screen edge
-const PERIMETER_THRESHOLD = 200;
+// This defines how far in from the edge you need to drag to trigger snap
+const PERIMETER_THRESHOLD = 150;
 
 // Corner zone size (width and height from corner)
-const CORNER_SIZE = 300;
+// Defines the quadrant snap zones
+const CORNER_SIZE = 200;
 
 /**
  * Get snap zone definitions based on screen dimensions
+ * 
+ * Layout:
+ * - Corners (CORNER_SIZE x CORNER_SIZE): Quadrant snaps
+ * - Edges (PERIMETER_THRESHOLD inset): Half snaps
+ * - Center (remaining space): Floating window zone (no snap)
+ * 
+ * Quadrants are equal in size based on desktop area (screenHeight)
+ * 
  * @param {number} screenWidth - Screen width in pixels
  * @param {number} screenHeight - Screen height in pixels (minus taskbar)
  * @returns {Object} Map of zone names to their perimeter boundaries
  */
 export function getSnapZones(screenWidth, screenHeight) {
+  const halfWidth = Math.floor(screenWidth / 2);
+  const halfHeight = Math.floor(screenHeight / 2);
+  
   return {
-    // Left half
+    // Left half - only triggers on left PERIMETER_THRESHOLD pixels
     [SNAP_ZONES.LEFT]: {
       perimeter: {
         x: 0,
@@ -49,12 +62,12 @@ export function getSnapZones(screenWidth, screenHeight) {
       snapBounds: {
         x: 0,
         y: TB,
-        w: Math.floor(screenWidth / 2),
+        w: halfWidth,
         h: screenHeight,
       },
     },
     
-    // Right half
+    // Right half - only triggers on right PERIMETER_THRESHOLD pixels
     [SNAP_ZONES.RIGHT]: {
       perimeter: {
         x: screenWidth - PERIMETER_THRESHOLD,
@@ -63,14 +76,14 @@ export function getSnapZones(screenWidth, screenHeight) {
         height: screenHeight - (CORNER_SIZE * 2),
       },
       snapBounds: {
-        x: Math.floor(screenWidth / 2),
+        x: halfWidth,
         y: TB,
-        w: Math.ceil(screenWidth / 2),
+        w: screenWidth - halfWidth,
         h: screenHeight,
       },
     },
     
-    // Top half
+    // Top half - only triggers on top PERIMETER_THRESHOLD pixels
     [SNAP_ZONES.TOP]: {
       perimeter: {
         x: CORNER_SIZE,
@@ -82,11 +95,11 @@ export function getSnapZones(screenWidth, screenHeight) {
         x: 0,
         y: TB,
         w: screenWidth,
-        h: Math.floor(screenHeight / 2),
+        h: halfHeight,
       },
     },
     
-    // Bottom half
+    // Bottom half - only triggers on bottom PERIMETER_THRESHOLD pixels
     [SNAP_ZONES.BOTTOM]: {
       perimeter: {
         x: CORNER_SIZE,
@@ -96,13 +109,13 @@ export function getSnapZones(screenWidth, screenHeight) {
       },
       snapBounds: {
         x: 0,
-        y: Math.floor(screenHeight / 2) + TB,
+        y: TB + halfHeight,
         w: screenWidth,
-        h: Math.ceil(screenHeight / 2),
+        h: screenHeight - halfHeight,
       },
     },
     
-    // Top-left quarter
+    // Top-left quadrant - equal size
     [SNAP_ZONES.TOP_LEFT]: {
       perimeter: {
         x: 0,
@@ -113,12 +126,12 @@ export function getSnapZones(screenWidth, screenHeight) {
       snapBounds: {
         x: 0,
         y: TB,
-        w: Math.floor(screenWidth / 2),
-        h: Math.floor(screenHeight / 2),
+        w: halfWidth,
+        h: halfHeight,
       },
     },
     
-    // Top-right quarter
+    // Top-right quadrant - equal size
     [SNAP_ZONES.TOP_RIGHT]: {
       perimeter: {
         x: screenWidth - CORNER_SIZE,
@@ -127,14 +140,14 @@ export function getSnapZones(screenWidth, screenHeight) {
         height: CORNER_SIZE,
       },
       snapBounds: {
-        x: Math.floor(screenWidth / 2),
+        x: halfWidth,
         y: TB,
-        w: Math.ceil(screenWidth / 2),
-        h: Math.floor(screenHeight / 2),
+        w: screenWidth - halfWidth,
+        h: halfHeight,
       },
     },
     
-    // Bottom-left quarter
+    // Bottom-left quadrant - equal size
     [SNAP_ZONES.BOTTOM_LEFT]: {
       perimeter: {
         x: 0,
@@ -144,13 +157,13 @@ export function getSnapZones(screenWidth, screenHeight) {
       },
       snapBounds: {
         x: 0,
-        y: Math.floor(screenHeight / 2) + TB,
-        w: Math.floor(screenWidth / 2),
-        h: Math.ceil(screenHeight / 2),
+        y: TB + halfHeight,
+        w: halfWidth,
+        h: screenHeight - halfHeight,
       },
     },
     
-    // Bottom-right quarter
+    // Bottom-right quadrant - equal size
     [SNAP_ZONES.BOTTOM_RIGHT]: {
       perimeter: {
         x: screenWidth - CORNER_SIZE,
@@ -159,10 +172,10 @@ export function getSnapZones(screenWidth, screenHeight) {
         height: CORNER_SIZE,
       },
       snapBounds: {
-        x: Math.floor(screenWidth / 2),
-        y: Math.floor(screenHeight / 2) + TB,
-        w: Math.ceil(screenWidth / 2),
-        h: Math.ceil(screenHeight / 2),
+        x: halfWidth,
+        y: TB + halfHeight,
+        w: screenWidth - halfWidth,
+        h: screenHeight - halfHeight,
       },
     },
   };

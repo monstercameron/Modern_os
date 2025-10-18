@@ -107,7 +107,17 @@ export function useWindowManager() {
    * Set active window (focus + bring to front)
    */
   const setActive = (id) => { 
-    console.log('Active window changed to:', id);
+    const activeWindow = wns.find(w => w.id === id);
+    if (activeWindow) {
+      console.log(`[Active Window] ${activeWindow.t}:`, {
+        windowId: id,
+        position: { x: activeWindow.b.x, y: activeWindow.b.y },
+        dimensions: { width: activeWindow.b.w, height: activeWindow.b.h },
+        isMinimized: activeWindow.m,
+        snapState: activeWindow.sn,
+        zIndex: activeWindow.z
+      });
+    }
     setActId(id); 
     fz(id);
     
@@ -147,30 +157,51 @@ export function useWindowManager() {
     
     setBadges(b => clearBadgeState(b, app.id));
     const id = uid();
-    const q = qb(wns.length); // snap new window to next quadrant
-    setW(ws => [...ws, { 
+    const quadrantIndex = wns.length;
+    const q = qb(quadrantIndex); // snap new window to next quadrant
+    
+    // Create the new window object
+    const newWindow = { 
       id, 
       appId: app.id, 
       t: app.title, 
       icon: app.icon, 
       ax: acc(app.color), 
       b: q, 
-      sn: SN.NONE, 
+      sn: SN.QUAD, 
       z: 1000, 
       m: false, 
       init,
       tilePosition: init?.tilePosition, // Store tile position for animation
       instanceCount: wns.filter(w => w.appId === app.id).length + 1 
-    }]);
-    setActive(id); // Set new window as active
+    };
     
-    // Publish window open event for Task Manager
+    console.log(`[Window Create] ${app.title}: quadrantIndex=${quadrantIndex}, wns.length=${wns.length}, sn=${newWindow.sn}`);
+    
+    setW(ws => [...ws, newWindow]);
+    
+    // Log immediately with the new window data
+    console.log(`[Active Window] ${app.title}:`, {
+      windowId: id,
+      position: { x: q.x, y: q.y },
+      dimensions: { width: q.w, height: q.h },
+      isMinimized: false,
+      snapState: newWindow.sn,
+      zIndex: 1000
+    });
+    
+    setActId(id);
+    fz(id);
+    
+    // Publish events for Task Manager
     eventBus.publish(TOPICS.WINDOW_OPEN, {
       windowId: id,
       appId: app.id,
       appName: app.title,
       minimized: false
     });
+    
+    eventBus.publish(TOPICS.WINDOW_FOCUS, { windowId: id });
   };
 
   /**

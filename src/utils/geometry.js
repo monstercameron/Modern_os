@@ -2,15 +2,15 @@ import { TB } from './constants.js';
 
 // 2x2 quadrant with gutters
 export function qb(slot) {
-  const pad = 12;
-  const mid = 12;
+  const pad = 0; // No padding - quadrants should span edge to edge
+  const mid = 12; // Gutter between quads
   const availW = window.innerWidth - (pad * 2);
   const availH = window.innerHeight - (TB + pad * 2);
   const qw = (availW - mid) / 2;
   const qh = (availH - mid) / 2;
   const x0 = pad;
   const x1 = pad + qw + mid;
-  const y0 = TB + pad;
+  const y0 = TB + pad; // Start right after taskbar, no additional padding
   const y1 = TB + pad + qh + mid;
   const idx = slot % 4; // TL, TR, BL, BR
   if (idx === 0) return { x: x0, y: y0, w: qw, h: qh };

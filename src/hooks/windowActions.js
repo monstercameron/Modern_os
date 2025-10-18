@@ -48,29 +48,30 @@ export function snapWindow(w, snapType) {
   const hw = window.innerWidth / 2;
   const hh = h / 2;
   
+  let newBounds;
+  
   if (snapType === SN.LEFT) {
-    return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.LEFT, b: { x: 0, y: TB, w: hw, h } };
-  }
-  if (snapType === SN.RIGHT) {
-    return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.RIGHT, b: { x: hw, y: TB, w: hw, h } };
-  }
-  if (snapType === SN.TOP) {
-    return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.TOP, b: { x: 0, y: TB, w: window.innerWidth, h: hh } };
-  }
-  if (snapType === SN.BOTTOM) {
-    const bottomRect = { x: 0, y: TB + hh, w: window.innerWidth, h: hh };
-    return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.BOTTOM, b: bottomRect };
-  }
-  if (snapType === SN.FULL) {
-    return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.FULL, b: { x: 0, y: TB, w: window.innerWidth, h } };
+    newBounds = { x: 0, y: TB, w: hw, h };
+  } else if (snapType === SN.RIGHT) {
+    newBounds = { x: hw, y: TB, w: hw, h };
+  } else if (snapType === SN.TOP) {
+    newBounds = { x: 0, y: TB, w: window.innerWidth, h: hh };
+  } else if (snapType === SN.BOTTOM) {
+    newBounds = { x: 0, y: TB + hh, w: window.innerWidth, h: hh };
+  } else if (snapType === SN.FULL) {
+    newBounds = { x: 0, y: TB, w: window.innerWidth, h };
+  } else {
+    return w;
   }
   
-  return w;
+  return { ...w, prevB: saveB, prevSN: w.sn, sn: snapType, b: newBounds };
 }
 
 export function snapQuadWindow(w, quadIndex) {
   const saveB = (w.sn === SN.NONE) ? w.b : (w.prevB || w.b);
-  return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.QUAD, b: qb(quadIndex) };
+  const newBounds = qb(quadIndex);
+  
+  return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.QUAD, b: newBounds };
 }
 
 export function toggleMaximizeWindow(w) {
@@ -94,5 +95,7 @@ export function toggleMaximizeWindow(w) {
 }
 
 export function floatWindow(w, x, y) {
-  return { ...w, sn: SN.NONE, b: { ...w.b, x, y }, z: 1000 };
+  const newBounds = { ...w.b, x, y };
+  
+  return { ...w, sn: SN.NONE, b: newBounds, z: 1000 };
 }
