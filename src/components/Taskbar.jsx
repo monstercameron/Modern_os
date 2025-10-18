@@ -221,6 +221,21 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
     setPreview({ id: winId, cx: r.left + r.width / 2 });
   }, []);
 
+  const handleTaskbarItemContextMenuWithMetadata = useCallback((e, winId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Find the window to get its state
+    const win = windows.find(w => w.id === winId);
+    
+    // Call the context menu handler with metadata
+    handleTaskbarItemContextMenu(e, {
+      winId,
+      isMinimized: win?.m || false,
+      isMaximized: win?.sn === SN.FULL || false,
+    });
+  }, [windows, handleTaskbarItemContextMenu]);
+
   const handleMouseLeave = useCallback(() => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
     previewTimer.current = setTimeout(() => setPreview({ id: null, cx: 0 }), 250);
@@ -275,7 +290,7 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
             <button
               key={w.id}
               onClick={() => handleWindowClick(w.id, w.m, w.id === activeId)}
-              onContextMenu={(e) => handleTaskbarItemContextMenu(e, { winId: w.id, isMinimized: w.m })}
+              onContextMenu={(e) => handleTaskbarItemContextMenuWithMetadata(e, w.id)}
               onMouseEnter={(e) => handleMouseEnter(e, w.id)}
               onMouseLeave={handleMouseLeave}
               className={`relative px-3 py-1.5 text-xs font-medium transition-all duration-200 border ${

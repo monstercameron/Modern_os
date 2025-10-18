@@ -27,7 +27,9 @@ export const CONTEXT_TYPES = {
   TASKBAR: 'taskbar',           // Right-click on taskbar background
   TASKBAR_ITEM: 'taskbar-item', // Right-click on taskbar window button
   TILE: 'tile',                 // Right-click on a tile
-  WINDOW: 'window',             // Right-click on window titlebar
+  WINDOW: 'window',             // Right-click on window titlebar/chrome
+  BROWSER: 'browser',           // Right-click on browser content area
+  BROWSER_LINK: 'browser-link', // Right-click on a link in browser
 };
 
 // Menu item actions
@@ -65,6 +67,20 @@ export const MENU_ACTIONS = {
   PROPERTIES: 'properties',
   UNINSTALL: 'uninstall',
   RESIZE_TILE: 'resizeTile',
+  
+  // Browser context
+  BACK: 'back',
+  FORWARD: 'forward',
+  RELOAD: 'reload',
+  VIEW_SOURCE: 'viewSource',
+  INSPECT: 'inspect',
+  PRINT: 'print',
+  SAVE_PAGE: 'savePage',
+  
+  // Browser link context
+  OPEN_LINK: 'openLink',
+  OPEN_LINK_NEW_TAB: 'openLinkNewTab',
+  COPY_LINK: 'copyLink',
 };
 
 /**
@@ -120,6 +136,25 @@ const CONTEXT_MENU_DEFINITIONS = {
     { id: 'properties', label: 'Properties', action: MENU_ACTIONS.PROPERTIES, icon: '✎' },
     { id: 'separator-3', type: 'separator' },
     { id: 'uninstall', label: 'Uninstall', action: MENU_ACTIONS.UNINSTALL, icon: '🗑️' },
+  ],
+  
+  [CONTEXT_TYPES.BROWSER]: [
+    { id: 'back', label: 'Back', action: MENU_ACTIONS.BACK, icon: '◀' },
+    { id: 'forward', label: 'Forward', action: MENU_ACTIONS.FORWARD, icon: '▶' },
+    { id: 'reload', label: 'Reload', action: MENU_ACTIONS.RELOAD, icon: '🔄' },
+    { id: 'separator-1', type: 'separator' },
+    { id: 'viewSource', label: 'View Page Source', action: MENU_ACTIONS.VIEW_SOURCE, icon: '📄' },
+    { id: 'inspect', label: 'Inspect', action: MENU_ACTIONS.INSPECT, icon: '🔍' },
+    { id: 'separator-2', type: 'separator' },
+    { id: 'print', label: 'Print', action: MENU_ACTIONS.PRINT, icon: '🖨️' },
+    { id: 'savePage', label: 'Save Page', action: MENU_ACTIONS.SAVE_PAGE, icon: '💾' },
+  ],
+  
+  [CONTEXT_TYPES.BROWSER_LINK]: [
+    { id: 'openLink', label: 'Open Link', action: MENU_ACTIONS.OPEN_LINK, icon: '▶' },
+    { id: 'openLinkNewTab', label: 'Open in New Tab', action: MENU_ACTIONS.OPEN_LINK_NEW_TAB, icon: '📑' },
+    { id: 'separator-1', type: 'separator' },
+    { id: 'copyLink', label: 'Copy Link', action: MENU_ACTIONS.COPY_LINK, icon: '📋' },
   ],
 };
 

@@ -420,13 +420,15 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       onMouseEnter={() => setHv(true)}
       onMouseLeave={() => setHv(false)}
       onClick={handleClick}
-      onContextMenu={(e) => handleWindowContextMenu(e)}
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
     >
       {/* Title bar - compact wrapper around window controls with grab handle */}
-      <div className="absolute top-0 right-0 z-10 flex items-center">
+      <div 
+        className="absolute top-0 right-0 z-10 flex items-center"
+        onContextMenu={(e) => handleWindowContextMenu(e)}
+      >
         {/* Grab handle padding */}
         <div 
           className={`select-none ${win.ax} text-white w-12 h-10 ${dragCur ? 'cursor-move' : 'cursor-default'}`}
