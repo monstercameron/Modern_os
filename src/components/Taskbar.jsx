@@ -180,6 +180,10 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
         eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId: metadata.winId, action: 'min' });
         break;
       case MENU_ACTIONS.MAXIMIZE:
+        // Unminimize first if minimized
+        if (metadata.isMinimized) {
+          eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId: metadata.winId, action: 'unmin' });
+        }
         eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId: metadata.winId, action: 'max' });
         break;
       case MENU_ACTIONS.CLOSE:

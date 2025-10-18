@@ -293,6 +293,11 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   
   const handlePointerDown = useCallback((e) => {
     if ((e.button ?? 0) !== 0) return;
+    // IMPORTANT: Don't start drag if clicking on a button
+    // This prevents dragCur from being set to true, which would disable
+    // window animations (including maximize/minimize). When dragCur is true,
+    // animateValue becomes undefined and Framer Motion stops animating.
+    if (e.target.closest('button')) return;
     setDragCur(true);
     controls.start(e);
   }, [controls]);
@@ -328,20 +333,31 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
     return null;
   }, [win.tilePosition, animatingFromTile]);
 
-  const animateStyle = useMemo(() => ({
-    x: 0,
-    y: 0,
-    left: win.b.x,
-    top: win.b.y,
-    width: win.b.w,
-    height: win.b.h,
-    scale: 1,
-    rotateY: 0
-  }), [win.b.x, win.b.y, win.b.w, win.b.h]);
+  const animateStyle = useMemo(() => {
+    const style = {
+      x: 0,
+      y: 0,
+      left: win.b.x,
+      top: win.b.y,
+      width: win.b.w,
+      height: win.b.h,
+      scale: 1,
+      rotateY: 0
+    };
+    console.log('[Win.animateStyle]', win.id, 'created:', style, 'sn:', win.sn);
+    return style;
+  }, [win.b.x, win.b.y, win.b.w, win.b.h, win.id, win.sn]);
 
   const divRef = useRef(null);
 
+  // CRITICAL: animateValue controls Framer Motion animation
+  // When dragCur is true, animateValue is undefined which disables animation.
+  // This allows manual dragging without animation interference.
+  // When dragCur is false, animateValue uses animateStyle which enables
+  // smooth spring animations for maximize, minimize, snap, etc.
+  // DO NOT modify this logic without testing all window resize operations.
   const animateValue = dragCur ? undefined : animateStyle;
+  console.log('[Win.animateValue]', win.id, 'dragCur:', dragCur, 'value:', animateValue);
 
   return (
     <motion.div
@@ -467,7 +483,9 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
               e.stopPropagation(); 
               setActive(win.id); 
               on("min"); 
-            }} 
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
             className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer" 
             title="Minimize"
           >
@@ -482,12 +500,28 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
               setActive(win.id); 
               on(windowState.isMaximized ? "unmax" : "max"); 
             }}
+            // IMPORTANT: These event handlers prevent the parent's drag/doubleclick
+            // from interfering with maximize button functionality
+            onPointerDown={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
             className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer"
             title={windowState.isMaximized ? "Restore / Snap" : "Maximize / Snap"}
           >
             {windowState.isMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("close"); }} className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer" title="Close"><X size={16}/></button>
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              setActive(win.id); 
+              on("close"); 
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+            className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer" 
+            title="Close"
+          >
+            <X size={16}/>
+          </button>
 
           {showSnap && (
             <div className="absolute top-full right-0 mt-1 bg-slate-900 text-white border border-white/20 p-3 grid grid-cols-6 gap-3 z-[2000] w-[360px]"
