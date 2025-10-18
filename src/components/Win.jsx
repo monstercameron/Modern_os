@@ -4,7 +4,10 @@ import { AppWindow, X, Maximize2, Minimize2, ChevronDown } from "lucide-react";
 import { TB, SN } from "../utils/constants.js";
 import { SnapCell, SnapIcon } from "./SnapComponents.jsx";
 import { SplashScreen } from "./SplashScreen.jsx";
+import { ContextMenu } from "./ContextMenu.jsx";
 import { useWindowState } from "../hooks/useWindowState.js";
+import { useContextMenu } from "../hooks/useContextMenu.js";
+import { CONTEXT_TYPES, MENU_ACTIONS } from "../utils/contextMenuStateMachine.js";
 import eventBus, { TOPICS } from "../utils/eventBus.js";
 
 // Resize handle component
@@ -58,6 +61,52 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   const [showSplash, setShowSplash] = useState(true);
   const [animatingFromTile, setAnimatingFromTile] = useState(!!win.tilePosition);
   
+  // Context menu for window
+  const {
+    contextMenuState: windowContextMenu,
+    handleContextMenu: handleWindowContextMenu,
+    handleCloseMenu: closeWindowMenu,
+    handleSelectItem: handleWindowMenuSelect,
+    updateMetadata: updateWindowMenuMetadata,
+  } = useContextMenu(CONTEXT_TYPES.WINDOW, { 
+    windowId: win.id,
+    isMinimized: win.m,
+    isMaximized: win.sn === SN.FULL,
+    isFullscreen: false,
+  });
+
+  // Handle window context menu actions
+  const handleWindowAction = useCallback((item) => {
+    switch (item.action) {
+      case MENU_ACTIONS.MINIMIZE:
+        on('min');
+        break;
+      case MENU_ACTIONS.MAXIMIZE:
+        on(win.sn === SN.FULL ? 'unmax' : 'max');
+        break;
+      case MENU_ACTIONS.RESTORE:
+        on('unmax');
+        break;
+      case MENU_ACTIONS.CLOSE:
+        on('close');
+        break;
+      case MENU_ACTIONS.SNAP_LEFT:
+        on('snap', SN.LEFT);
+        break;
+      case MENU_ACTIONS.SNAP_RIGHT:
+        on('snap', SN.RIGHT);
+        break;
+      case MENU_ACTIONS.SNAP_TOP:
+        on('snap', SN.TOP);
+        break;
+      case MENU_ACTIONS.SNAP_BOTTOM:
+        on('snap', SN.BOTTOM);
+        break;
+      default:
+        break;
+    }
+  }, [win, on]);
+  
   // Hide splash screen after minimum 100ms
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -65,6 +114,14 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
     }, 100);
     return () => clearTimeout(timer);
   }, []);
+  
+  // Update window menu metadata when window state changes
+  useEffect(() => {
+    updateWindowMenuMetadata({
+      isMinimized: win.m,
+      isMaximized: win.sn === SN.FULL,
+    });
+  }, [win.m, win.sn, updateWindowMenuMetadata]);
   
   // Subscribe to window actions from taskbar preview via eventBus
   useEffect(() => {
@@ -363,6 +420,7 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       onMouseEnter={() => setHv(true)}
       onMouseLeave={() => setHv(false)}
       onClick={handleClick}
+      onContextMenu={(e) => handleWindowContextMenu(e)}
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
@@ -456,6 +514,16 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
           <ResizeHandle position="nw" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
         </>
       )}
+
+      {/* Window Context Menu */}
+      <ContextMenu
+        contextMenuState={windowContextMenu}
+        onClose={closeWindowMenu}
+        onSelectItem={(item) => {
+          handleWindowMenuSelect(item);
+          handleWindowAction(item);
+        }}
+      />
     </motion.div>
   );
 });

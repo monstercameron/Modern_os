@@ -11,8 +11,11 @@ import {
 } from 'lucide-react';
 import { TB, SN, clampX } from '../utils/constants.js';
 import { NotificationCenter } from './NotificationCenter.jsx';
+import { ContextMenu } from './ContextMenu.jsx';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useWindowState } from '../hooks/useWindowState.js';
+import { useContextMenu } from '../hooks/useContextMenu.js';
+import { CONTEXT_TYPES, MENU_ACTIONS } from '../utils/contextMenuStateMachine.js';
 import eventBus, { TOPICS } from '../utils/eventBus.js';
 
 // Fixed: showQuickSettings error - using showNotificationCenter instead
@@ -135,6 +138,58 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
   const previewTimer = useRef(null);
   const { settings } = useSettings();
 
+  // Context menu for taskbar
+  const {
+    contextMenuState: taskbarContextMenu,
+    handleContextMenu: handleTaskbarContextMenu,
+    handleCloseMenu: closeTaskbarMenu,
+    handleSelectItem: handleTaskbarMenuSelect,
+  } = useContextMenu(CONTEXT_TYPES.TASKBAR);
+
+  // Context menu for taskbar items
+  const {
+    contextMenuState: taskbarItemContextMenu,
+    handleContextMenu: handleTaskbarItemContextMenu,
+    handleCloseMenu: closeTaskbarItemMenu,
+    handleSelectItem: handleTaskbarItemMenuSelect,
+  } = useContextMenu(CONTEXT_TYPES.TASKBAR_ITEM);
+
+  // Handle taskbar context menu actions
+  const handleTaskbarAction = useCallback((item) => {
+    switch (item.action) {
+      case MENU_ACTIONS.CLOSE_ALL:
+        // Close all windows
+        windows.forEach(w => {
+          eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId: w.id, action: 'close' });
+        });
+        break;
+      case MENU_ACTIONS.SETTINGS:
+        // Open settings app
+        eventBus.publish(TOPICS.APP_LAUNCH, { appId: 'settings' });
+        break;
+      default:
+        break;
+    }
+  }, [windows]);
+
+  // Handle taskbar item context menu actions
+  const handleTaskbarItemAction = useCallback((item) => {
+    const metadata = taskbarItemContextMenu.metadata;
+    switch (item.action) {
+      case MENU_ACTIONS.MINIMIZE:
+        eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId: metadata.winId, action: 'min' });
+        break;
+      case MENU_ACTIONS.MAXIMIZE:
+        eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId: metadata.winId, action: 'max' });
+        break;
+      case MENU_ACTIONS.CLOSE:
+        eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId: metadata.winId, action: 'close' });
+        break;
+      default:
+        break;
+    }
+  }, [taskbarItemContextMenu.metadata]);
+
   // Handle window button clicks via event bus
   const handleWindowClick = useCallback((winId, isMinimized, isActive) => {
     if (showNotificationCenter) {
@@ -213,12 +268,14 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
       <div 
         className="absolute top-0 left-0 right-0 h-10 px-3 flex items-center justify-between border-b" 
         style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
+        onContextMenu={(e) => handleTaskbarContextMenu(e)}
       >
         <div className="flex items-center gap-1 ml-2">
           {windows.map(w => (
             <button
               key={w.id}
               onClick={() => handleWindowClick(w.id, w.m, w.id === activeId)}
+              onContextMenu={(e) => handleTaskbarItemContextMenu(e, { winId: w.id, isMinimized: w.m })}
               onMouseEnter={(e) => handleMouseEnter(e, w.id)}
               onMouseLeave={handleMouseLeave}
               className={`relative px-3 py-1.5 text-xs font-medium transition-all duration-200 border ${
@@ -326,6 +383,26 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
       <NotificationCenter 
         isOpen={showNotificationCenter} 
         onClose={handleCloseNotificationCenter} 
+      />
+
+      {/* Taskbar Context Menu */}
+      <ContextMenu
+        contextMenuState={taskbarContextMenu}
+        onClose={closeTaskbarMenu}
+        onSelectItem={(item) => {
+          handleTaskbarMenuSelect(item);
+          handleTaskbarAction(item);
+        }}
+      />
+
+      {/* Taskbar Item Context Menu */}
+      <ContextMenu
+        contextMenuState={taskbarItemContextMenu}
+        onClose={closeTaskbarItemMenu}
+        onSelectItem={(item) => {
+          handleTaskbarItemMenuSelect(item);
+          handleTaskbarItemAction(item);
+        }}
       />
 
       {/* Icon hover popover */}

@@ -1,6 +1,9 @@
 import React, { useState, memo, useCallback, useMemo, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Plus, Mail, MessageCircle, Calendar, FileText, Image, Cloud } from "lucide-react";
+import { useContextMenu } from "../hooks/useContextMenu.js";
+import { ContextMenu } from "./ContextMenu.jsx";
+import { CONTEXT_TYPES, MENU_ACTIONS } from "../utils/contextMenuStateMachine.js";
 import eventBus, { TOPICS } from "../utils/eventBus.js";
 
 export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0, isEditMode = false, onUpdateSize, animatingBadge = false }) {
@@ -9,6 +12,52 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0, isEdit
   const [playing, setPlaying] = useState(false);
   const longPressTimeout = useRef(null);
   const [longPressed, setLongPressed] = useState(false);
+  
+  // Context menu for tile
+  const {
+    contextMenuState: tileContextMenu,
+    handleContextMenu: handleTileContextMenu,
+    handleCloseMenu: closeTileMenu,
+    handleSelectItem: handleTileMenuSelect,
+  } = useContextMenu(CONTEXT_TYPES.TILE, { appId: app.id, appTitle: app.title });
+
+  // Handle tile context menu actions
+  const handleTileAction = useCallback((item) => {
+    switch (item.action) {
+      case MENU_ACTIONS.OPEN:
+        onOpen(app, {});
+        break;
+      case MENU_ACTIONS.PIN:
+        eventBus.publish(TOPICS.CONTEXT_MENU_ACTION, {
+          action: 'tilePin',
+          appId: app.id,
+        });
+        break;
+      case MENU_ACTIONS.RESIZE_TILE:
+        // Trigger tile resize mode
+        eventBus.publish(TOPICS.CONTEXT_MENU_ACTION, {
+          action: 'tileResize',
+          appId: app.id,
+        });
+        break;
+      case MENU_ACTIONS.PROPERTIES:
+        // Show properties
+        eventBus.publish(TOPICS.CONTEXT_MENU_ACTION, {
+          action: 'tileProperties',
+          appId: app.id,
+        });
+        break;
+      case MENU_ACTIONS.UNINSTALL:
+        // Uninstall app
+        eventBus.publish(TOPICS.CONTEXT_MENU_ACTION, {
+          action: 'tileUninstall',
+          appId: app.id,
+        });
+        break;
+      default:
+        break;
+    }
+  }, [app, onOpen]);
   
   const renderContent = useCallback(() => {
     // Email - show unread count and quick compose
@@ -566,6 +615,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0, isEdit
   return (
     <motion.div
       onClick={handleOpen}
+      onContextMenu={(e) => handleTileContextMenu(e)}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onHoverStart={handleHoverStart}
@@ -611,6 +661,16 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0, isEdit
           </button>
         </motion.div>
       )}
+
+      {/* Tile Context Menu */}
+      <ContextMenu
+        contextMenuState={tileContextMenu}
+        onClose={closeTileMenu}
+        onSelectItem={(item) => {
+          handleTileMenuSelect(item);
+          handleTileAction(item);
+        }}
+      />
     </motion.div>
   );
 });

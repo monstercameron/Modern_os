@@ -263,6 +263,11 @@ export const TOPICS = {
   TILE_LONG_PRESS: 'tile.longPress',
   TILE_EDIT_EXIT: 'tile.editExit',
   
+  // Context menu events
+  CONTEXT_MENU_OPEN: 'contextMenu.open',
+  CONTEXT_MENU_CLOSE: 'contextMenu.close',
+  CONTEXT_MENU_ACTION: 'contextMenu.action',
+  
   // App events
   APP_LAUNCH: 'app.launch',
   APP_CLOSE: 'app.close',
