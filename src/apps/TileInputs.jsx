@@ -24,12 +24,31 @@ export function TileInputs({ config, setConfig }) {
   const { cols: currentCols, rows: currentRows } = getCurrentSize();
 
   const handleCellClick = (col, row) => {
-    // Toggle the cell - if clicking on current size, reset to 1x1
-    if (col === currentCols && row === currentRows) {
-      setConfig({ ...config, size: '1x1' });
-    } else {
-      setConfig({ ...config, size: `${col}x${row}` });
+    const newSize = col === currentCols && row === currentRows ? '1x1' : `${col}x${row}`;
+    const [newCols, newRows] = newSize.split('x').map(Number);
+    
+    // Check if placed widgets still fit
+    if (config.placedWidgets && config.placedWidgets.length > 0) {
+      const widgetsThatFit = config.placedWidgets.filter(widget => {
+        const [widgetCols, widgetRows] = widget.size.split('x').map(Number);
+        return widgetCols <= newCols && widgetRows <= newRows && !(newCols === 1 && newRows === 1);
+      });
+      
+      if (widgetsThatFit.length !== config.placedWidgets.length) {
+        // Some widgets don't fit, keep only the ones that do
+        setConfig({ 
+          ...config, 
+          size: newSize,
+          placedWidgets: widgetsThatFit,
+          icon: 'Mail', // Reset to default
+          title: 'Sample App',
+          color: 'bg-blue-600'
+        });
+        return;
+      }
     }
+    
+    setConfig({ ...config, size: newSize });
   };
 
   const isCellSelected = (col, row) => {
@@ -86,6 +105,18 @@ export function TileInputs({ config, setConfig }) {
             <div>Width: Flexible based on container</div>
             <div className="text-xs text-white/40">Desktop uses 6-column CSS Grid</div>
             <div>Max Control Span: {Math.max(1, ...config.actionControls.filter(c => c.enabled).map(c => c.span?.width || 1))}</div>
+            <div>Widget Slots: {config.placedWidgets?.length || 0} / {(() => {
+              const [cols, rows] = config.size.split('x').map(Number);
+              if (cols === 1 && rows === 1) return 0;
+              if (cols === 1) {
+                const totalSlots = rows === 1 ? 2 : 2 + 3 * (rows - 1);
+                return totalSlots - 2;
+              } else if (rows === 1) {
+                return cols;
+              } else {
+                return cols * rows;
+              }
+            })()}</div>
           </div>
         </div>
       </div>
@@ -202,6 +233,35 @@ export function TileInputs({ config, setConfig }) {
             className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-white/50 h-20"
             placeholder="Enter list items (one per line)"
           />
+        </div>
+      )}
+
+      {/* Placed Widgets Management */}
+      {config.placedWidgets && config.placedWidgets.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium mb-3">Placed Widgets ({config.placedWidgets.length})</label>
+          <div className="space-y-2">
+            {config.placedWidgets.map((widget, index) => (
+              <div key={index} className="bg-white/5 rounded p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{widget.icon}</span>
+                  <div>
+                    <div className="text-sm font-medium">{widget.name}</div>
+                    <div className="text-xs text-white/60">{widget.size} slots</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const newWidgets = config.placedWidgets.filter((_, i) => i !== index);
+                    setConfig({ ...config, placedWidgets: newWidgets });
+                  }}
+                  className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
