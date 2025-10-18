@@ -58,7 +58,7 @@ export const DesktopGrid = memo(function DesktopGrid({ apps, badges, onOpen, onQ
       onContextMenu={(e) => handleDesktopContextMenu(e)}
     >
       {apps.map(app => {
-        const customSize = tileSizes[app.id] || app.size;
+        const customSize = tileSizes[app.id] || app.size;       
         return (
           <Tile 
             key={app.id} 

@@ -12,6 +12,29 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0, isEdit
   const [playing, setPlaying] = useState(false);
   const longPressTimeout = useRef(null);
   const [longPressed, setLongPressed] = useState(false);
+  const tileRef = useRef(null);
+  
+  // Log tile dimensions on mount
+  useEffect(() => {
+    const colSpan = app.size.includes('col-span-') ? parseInt(app.size.match(/col-span-(\d+)/)?.[1] || '1') : 1;
+    const rowSpan = app.size.includes('row-span-') ? parseInt(app.size.match(/row-span-(\d+)/)?.[1] || '1') : 1;
+    
+    console.log(`📏 Tile Render: ${app.id} | CSS: ${app.size} | Grid: ${colSpan}×${rowSpan} | Row Height: 96px (columns are flexible)`);
+    
+    // Log actual rendered dimensions after layout
+    const checkDimensions = () => {
+      if (tileRef.current) {
+        const rect = tileRef.current.getBoundingClientRect();
+        const actualWidth = Math.round(rect.width);
+        const actualHeight = Math.round(rect.height);
+        console.log(`📐 Tile Actual: ${app.id} | Rendered: ${actualWidth}×${actualHeight}px | Aspect: ${(actualWidth/actualHeight).toFixed(2)}:1`);
+      }
+    };
+    
+    // Check immediately and after a short delay to ensure layout is complete
+    checkDimensions();
+    setTimeout(checkDimensions, 100);
+  }, [app.id, app.size]);
   
   // Context menu for tile
   const {
@@ -614,6 +637,7 @@ export const Tile = memo(function Tile({ app, onOpen, onQuick, badge = 0, isEdit
   
   return (
     <motion.div
+      ref={tileRef}
       onClick={handleOpen}
       onContextMenu={(e) => handleTileContextMenu(e)}
       onPointerDown={handlePointerDown}
