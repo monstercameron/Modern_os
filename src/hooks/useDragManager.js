@@ -12,18 +12,6 @@ function evaluateSnapZone(point, screenWidth, screenHeight) {
   // Detect which zone the pointer is in
   const zone = detectSnapZone(point.x, point.y, screenWidth, screenHeight);
   
-  console.log('evaluateSnapZone:', { 
-    pointX: point.x, 
-    pointY: point.y, 
-    screenWidth, 
-    screenHeight, 
-    detectedZone: zone,
-    leftEdge: point.x < 50,
-    rightEdge: point.x > screenWidth - 50,
-    topEdge: point.y < 50,
-    bottomEdge: point.y > screenHeight - 50
-  });
-  
   if (zone === SNAP_ZONES.NONE) {
     return { zone: null, rect: null, snapType: null };
   }
@@ -34,8 +22,6 @@ function evaluateSnapZone(point, screenWidth, screenHeight) {
   if (!bounds) {
     return { zone: null, rect: null, snapType: null };
   }
-  
-  console.log(`Snap bounds calculated: zone=${zone}, x=${bounds.x}, y=${bounds.y}, w=${bounds.w}, h=${bounds.h}`);
   
   // Return snap result with bounds directly from snapZones
   // All zones now use 'snapToBounds' action type

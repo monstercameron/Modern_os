@@ -87,7 +87,6 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = eventBus.subscribe('WINDOW_ABOUT', (data) => {
       // About dialog now handled locally in Win.jsx
-      console.log('[App] About dialog handled locally in window component');
     });
     return unsubscribe;
   }, []);

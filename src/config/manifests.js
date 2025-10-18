@@ -778,7 +778,7 @@ export function requestPermission(appId, permission) {
   return new Promise((resolve) => {
     const granted = manifest.permissions[permission] || false;
     if (granted) {
-      console.log(`✓ ${manifest.title} granted ${permission} permission`);
+      // Permission granted
     } else {
       console.warn(`✗ ${manifest.title} denied ${permission} permission`);
     }

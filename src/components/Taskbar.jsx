@@ -204,15 +204,6 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
 
   // Handle window actions via event bus
   const handleWindowAction = useCallback((winId, action) => {
-    console.log('[Taskbar.handleWindowAction] Publishing TASKBAR_WINDOW_ACTION:', { winId, action });
-    console.log('[Taskbar.handleWindowAction] win object exists:', !!previewWin);
-    console.log('[Taskbar.handleWindowAction] action details:', {
-      winId,
-      action,
-      actionType: typeof action,
-      previewWinId: previewWin?.id,
-      previewWinSn: previewWin?.sn
-    });
     eventBus.publish(TOPICS.TASKBAR_WINDOW_ACTION, { winId, action });
   }, []);
 
@@ -367,14 +358,11 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
           cx={preview.cx}
           onClose={() => setPreview({ id: null, cx: 0 })}
           onMinimize={() => {
-            console.log('[Taskbar] Minimize button clicked, window state:', { id: previewWin.id, minimized: previewWin.m, active: previewWin.id === activeId });
             handleWindowAction(previewWin.id, 'min');
           }}
           onMinMax={() => {
-            console.log('[Taskbar] Maximize button clicked, window state:', { id: previewWin.id, minimized: previewWin.m, snapState: previewWin.sn });
             if (previewWin.m) {
               // Window is minimized - unminimize first, then maximize
-              console.log('[Taskbar] Window is minimized, unminimizing and then maximizing');
               handleWindowAction(previewWin.id, 'unmin');
               // Schedule the maximize action after a short delay to allow unmin to process
               setTimeout(() => {

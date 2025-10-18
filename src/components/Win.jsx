@@ -133,45 +133,29 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
     const unsubscribe = eventBus.subscribeFiltered(
       TOPICS.TASKBAR_WINDOW_ACTION,
       (data) => {
-        console.log('[Win.subscribeFiltered] Checking if event is for this window:', { 
-          eventWinId: data.winId, 
-          thisWindowId: win.id, 
-          matches: data.winId === win.id 
-        });
         return data.winId === win.id;
       },
       (data) => {
-        console.log('[Win] Received TASKBAR_WINDOW_ACTION event for this window:', data);
         const { action } = data;
-        console.log('[Win] Action to execute:', action);
         
         // Execute the action via the window's action handler
         if (action === 'activate') {
-          console.log('[Win] Executing activate action - calling setActive(). NOT calling on() since activate is handled by setActive');
           setActive(win.id);
         } else if (action === 'min') {
-          console.log('[Win] Executing min action - calling on("min")');
           on('min');
         } else if (action === 'unmin') {
-          console.log('[Win] Executing unmin action - calling on("unmin")');
           on('unmin');
         } else if (action === 'max') {
-          console.log('[Win] Executing max action - calling on("max")');
           on('max');
         } else if (action === 'unmax') {
-          console.log('[Win] Executing unmax action - calling on("unmax")');
           on('unmax');
         } else if (action === 'close') {
-          console.log('[Win] Executing close action - calling on("close")');
           on('close');
-        } else {
-          console.log('[Win] Unknown action received:', action);
         }
       }
     );
     
     return () => {
-      console.log('[Win] Unsubscribing from TASKBAR_WINDOW_ACTION for window:', win.id);
       unsubscribe();
     };
   }, [win.id, on, setActive]);
@@ -344,7 +328,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       scale: 1,
       rotateY: 0
     };
-    console.log('[Win.animateStyle]', win.id, 'created:', style, 'sn:', win.sn);
     return style;
   }, [win.b.x, win.b.y, win.b.w, win.b.h, win.id, win.sn]);
 
@@ -357,7 +340,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   // smooth spring animations for maximize, minimize, snap, etc.
   // DO NOT modify this logic without testing all window resize operations.
   const animateValue = dragCur ? undefined : animateStyle;
-  console.log('[Win.animateValue]', win.id, 'dragCur:', dragCur, 'value:', animateValue);
 
   return (
     <motion.div
@@ -385,7 +367,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
             const inlineTop = el.style.top || null;
             const scrollX = typeof window.scrollX !== 'undefined' ? window.scrollX : (document.documentElement || {}).scrollLeft || 0;
             const scrollY = typeof window.scrollY !== 'undefined' ? window.scrollY : (document.documentElement || {}).scrollTop || 0;
-            console.log(`Win animationComplete rect vs bounds id=${win.id} bounds=${win.b.x},${win.b.y},${win.b.w},${win.b.h} rect=${rectStr} elStyleLeft=${inlineLeft} elStyleTop=${inlineTop} elTransform=${elTransform} scroll=${scrollX},${scrollY}`);
             // If DOM rect doesn't match expected bounds, log ancestor transforms and rects
             if (Math.round(r.left) !== win.b.x || Math.round(r.top) !== win.b.y) {
               try {
@@ -397,7 +378,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
                   ancestors.push({ tag: node.tagName, id: node.id || null, class: node.className || null, rect: nr ? `${Math.round(nr.left)},${Math.round(nr.top)},${Math.round(nr.width)},${Math.round(nr.height)}` : null, transform: cs ? cs.transform : null });
                   node = node.parentElement;
                 }
-                console.log('Win ancestor chain (closest->root):', ancestors);
               } catch (err) {
                 console.error('Error logging ancestors', err);
               }
@@ -414,7 +394,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
                     el.style.setProperty('top', `${win.b.y}px`, 'important');
                     el.style.setProperty('width', `${win.b.w}px`, 'important');
                     el.style.setProperty('height', `${win.b.h}px`, 'important');
-                    console.log(`Win corrected inline styles id=${win.id} -> left=${el.style.left} top=${el.style.top} w=${el.style.width} h=${el.style.height} (important)`);
                   } catch (err2) {
                     console.error('Error applying inline correction', err2);
                   }
@@ -496,7 +475,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
             onMouseLeave={handleMaxHoverEnd}
             onClick={(e) => { 
               e.stopPropagation(); 
-              console.log('[Win.MaxButton] Clicked for window:', win.id, 'windowState:', windowState);
               setActive(win.id); 
               on(windowState.isMaximized ? "unmax" : "max"); 
             }}

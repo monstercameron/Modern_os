@@ -28,25 +28,25 @@ export function BrowserApp({ init = {} }) {
   const handleBrowserAction = useCallback((item) => {
     switch (item.action) {
       case MENU_ACTIONS.BACK:
-        console.log('Browser: Go back');
+        // Go back
         break;
       case MENU_ACTIONS.FORWARD:
-        console.log('Browser: Go forward');
+        // Go forward
         break;
       case MENU_ACTIONS.RELOAD:
-        console.log('Browser: Reload page');
+        // Reload page
         break;
       case MENU_ACTIONS.VIEW_SOURCE:
-        console.log('Browser: View source');
+        // View source
         break;
       case MENU_ACTIONS.INSPECT:
-        console.log('Browser: Inspect element');
+        // Inspect element
         break;
       case MENU_ACTIONS.PRINT:
-        console.log('Browser: Print');
+        // Print
         break;
       case MENU_ACTIONS.SAVE_PAGE:
-        console.log('Browser: Save page');
+        // Save page
         break;
       default:
         break;
@@ -57,13 +57,13 @@ export function BrowserApp({ init = {} }) {
   const handleBrowserLinkAction = useCallback((item) => {
     switch (item.action) {
       case MENU_ACTIONS.OPEN_LINK:
-        console.log('Browser: Open link');
+        // Open link
         break;
       case MENU_ACTIONS.OPEN_LINK_NEW_TAB:
-        console.log('Browser: Open link in new tab');
+        // Open link in new tab
         break;
       case MENU_ACTIONS.COPY_LINK:
-        console.log('Browser: Copy link');
+        // Copy link
         break;
       default:
         break;
