@@ -85,6 +85,7 @@ export function TileInputs({ config, setConfig }) {
             <div>Height: {currentRows * 96}px (fixed)</div>
             <div>Width: Flexible based on container</div>
             <div className="text-xs text-white/40">Desktop uses 6-column CSS Grid</div>
+            <div>Max Control Span: {Math.max(1, ...config.actionControls.filter(c => c.enabled).map(c => c.span?.width || 1))}</div>
           </div>
         </div>
       </div>
@@ -220,16 +221,28 @@ export function TileInputs({ config, setConfig }) {
             {(() => {
               const [cols, rows] = config.size.split('x').map(Number);
               
+              // Place controls sequentially
+              const placed = [];
+              let currentX = 0;
+              config.actionControls.filter(c => c.enabled).forEach((control, index) => {
+                const width = control.span?.width || 1;
+                if (currentX + width <= 3) {
+                  placed.push({ control, startX: currentX, index });
+                  currentX += width;
+                }
+              });
+              
               // All tile sizes - 3-cell grid for icons only
               return (
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   {(() => {
                     return [0, 1, 2].map((cellIndex) => {
-                      const control = config.actionControls.find(c => c.enabled && c.position?.x === cellIndex);
+                      const place = placed.find(p => p.startX === cellIndex);
                       
-                      if (control) {
+                      if (place) {
+                        const { control } = place;
                         return (
-                          <div key={cellIndex} className="col-span-1">
+                          <div key={cellIndex} className={`col-span-${control.span?.width || 1}`}>
                             <button
                               onClick={() => {
                                 // Could add edit functionality here
@@ -240,48 +253,33 @@ export function TileInputs({ config, setConfig }) {
                                 <span>{control.icon === 'Play' ? '▶️' : '⚙️'}</span>
                               </div>
                             </button>
-                            
-                            {/* Remove button */}
-                            <div className="flex justify-center mt-2">
-                              <button
-                                onClick={() => {
-                                  const newControls = config.actionControls.map(c => 
-                                    c.id === control.id ? { ...c, enabled: false } : c
-                                  );
-                                  setConfig({ ...config, actionControls: newControls });
-                                }}
-                                className="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 hover:text-red-300"
-                              >
-                                Remove
-                              </button>
-                            </div>
+                          </div>
+                        );
+                      } else if (cellIndex >= currentX) {
+                        // Empty cell
+                        return (
+                          <div key={cellIndex} className="col-span-1">
+                            <button
+                              onClick={() => {
+                                // Add new control
+                                const newControl = {
+                                  id: Date.now(),
+                                  icon: 'Play',
+                                  text: `Action ${config.actionControls.filter(c => c.enabled).length + 1}`,
+                                  color: 'bg-blue-600',
+                                  enabled: true,
+                                  span: { width: 1, height: 1 }
+                                };
+                                setConfig({ ...config, actionControls: [...config.actionControls, newControl] });
+                              }}
+                              className="w-full h-16 rounded border-2 border-dashed border-white/20 bg-white/5 hover:bg-white/10 flex items-center justify-center text-sm"
+                            >
+                              <span className="text-white/40">Click to add</span>
+                            </button>
                           </div>
                         );
                       }
-                      
-                      // Empty cell
-                      return (
-                        <div key={cellIndex} className="col-span-1">
-                          <button
-                            onClick={() => {
-                              // Add new control
-                              const newControl = {
-                                id: Date.now(),
-                                icon: 'Play',
-                                text: `Action ${cellIndex + 1}`,
-                                color: 'bg-blue-600',
-                                enabled: true,
-                                position: { x: cellIndex, y: 0 },
-                                span: { width: 1, height: 1 }
-                              };
-                              setConfig({ ...config, actionControls: [...config.actionControls, newControl] });
-                            }}
-                            className="w-full h-16 rounded border-2 border-dashed border-white/20 bg-white/5 hover:bg-white/10 flex items-center justify-center text-sm"
-                          >
-                            <span className="text-white/40">Click to add</span>
-                          </button>
-                        </div>
-                      );
+                      return null;
                     });
                   })()}
                 </div>
@@ -305,7 +303,7 @@ export function TileInputs({ config, setConfig }) {
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <div>
                       <label className="block text-xs mb-1">Icon</label>
                       <select
@@ -355,6 +353,30 @@ export function TileInputs({ config, setConfig }) {
                           <option key={color} value={color}>{color.replace('bg-', '')}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs mb-1">Span</label>
+                      <button
+                        onClick={() => {
+                          const currentWidth = control.span?.width || 1;
+                          const newWidth = currentWidth === 1 ? 2 : currentWidth === 2 ? 3 : 1;
+                          const newControls = config.actionControls.map(c => 
+                            c.id === control.id ? { ...c, span: { ...c.span, width: newWidth } } : c
+                          );
+                          const updatedConfig = { ...config, actionControls: newControls };
+                          // Update tile size to reflect max span
+                          const maxSpan = Math.max(1, ...updatedConfig.actionControls.filter(c => c.enabled).map(c => c.span?.width || 1));
+                          const [cols, rows] = updatedConfig.size.split('x').map(Number);
+                          if (maxSpan > cols) {
+                            updatedConfig.size = `${maxSpan}x${rows}`;
+                          }
+                          setConfig(updatedConfig);
+                        }}
+                        className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm hover:bg-white/20"
+                      >
+                        Span: {control.span?.width || 1}
+                      </button>
                     </div>
                   </div>
                 </div>

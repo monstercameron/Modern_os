@@ -56,15 +56,24 @@ export function TilePreview({ config }) {
           {config.actionControls && config.actionControls.some(c => c.enabled) && (
             <div className="mt-auto">
               {(() => {
-                const enabledControls = config.actionControls.filter(c => c.enabled).slice(0, 3);
-                if (enabledControls.length === 0) return null;
+                const enabledControls = config.actionControls.filter(c => c.enabled);
+                const placed = [];
+                let currentX = 0;
+                enabledControls.forEach((control) => {
+                  const width = control.span?.width || 1;
+                  if (currentX + width <= 3) {
+                    placed.push({ control, startX: currentX });
+                    currentX += width;
+                  }
+                });
+                if (placed.length === 0) return null;
 
                 return (
-                  <div className="flex justify-center gap-1">
-                    {enabledControls.map((control) => (
+                  <div className="grid grid-cols-3 gap-1">
+                    {placed.map(({ control }) => (
                       <button
                         key={control.id}
-                        className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] min-w-[20px] flex-1`}
+                        className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] col-span-${control.span?.width || 1}`}
                       >
                         <span className="text-sm">
                           {control.icon === 'Play' ? '▶️' :
@@ -121,15 +130,24 @@ export function TilePreview({ config }) {
             {config.actionControls && config.actionControls.some(c => c.enabled) && (
               <div className="mt-auto">
                 {(() => {
-                  const enabledControls = config.actionControls.filter(c => c.enabled).slice(0, 3);
-                  if (enabledControls.length === 0) return null;
+                  const enabledControls = config.actionControls.filter(c => c.enabled);
+                  const placed = [];
+                  let currentX = 0;
+                  enabledControls.forEach((control) => {
+                    const width = control.span?.width || 1;
+                    if (currentX + width <= 3) {
+                      placed.push({ control, startX: currentX });
+                      currentX += width;
+                    }
+                  });
+                  if (placed.length === 0) return null;
 
                   return (
-                    <div className="flex justify-center gap-1">
-                      {enabledControls.map((control) => (
+                    <div className="grid grid-cols-3 gap-1">
+                      {placed.map(({ control }) => (
                         <button
                           key={control.id}
-                          className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] min-w-[20px] flex-1`}
+                          className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] col-span-${control.span?.width || 1}`}
                         >
                           <span className="text-sm">
                             {control.icon === 'Play' ? '▶️' :
@@ -191,15 +209,24 @@ export function TilePreview({ config }) {
           {config.actionControls && config.actionControls.some(c => c.enabled) && (
             <div className="mt-auto">
               {(() => {
-                const enabledControls = config.actionControls.filter(c => c.enabled).slice(0, 3);
-                if (enabledControls.length === 0) return null;
+                const enabledControls = config.actionControls.filter(c => c.enabled);
+                const placed = [];
+                let currentX = 0;
+                enabledControls.forEach((control) => {
+                  const width = control.span?.width || 1;
+                  if (currentX + width <= 3) {
+                    placed.push({ control, startX: currentX });
+                    currentX += width;
+                  }
+                });
+                if (placed.length === 0) return null;
 
                 return (
-                  <div className="flex justify-center gap-1">
-                    {enabledControls.map((control) => (
+                  <div className="grid grid-cols-3 gap-1">
+                    {placed.map(({ control }) => (
                       <button
                         key={control.id}
-                        className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] min-w-[20px] flex-1`}
+                        className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] col-span-${control.span?.width || 1}`}
                       >
                         <span className="text-sm">
                           {control.icon === 'Play' ? '▶️' :
@@ -257,15 +284,24 @@ export function TilePreview({ config }) {
           {config.actionControls && config.actionControls.some(c => c.enabled) && (
             <div className="mt-auto">
               {(() => {
-                const enabledControls = config.actionControls.filter(c => c.enabled).slice(0, 3);
-                if (enabledControls.length === 0) return null;
+                const enabledControls = config.actionControls.filter(c => c.enabled);
+                const placed = [];
+                let currentX = 0;
+                enabledControls.forEach((control) => {
+                  const width = control.span?.width || 1;
+                  if (currentX + width <= 3) {
+                    placed.push({ control, startX: currentX });
+                    currentX += width;
+                  }
+                });
+                if (placed.length === 0) return null;
 
                 return (
-                  <div className="flex justify-center gap-1">
-                    {enabledControls.map((control) => (
+                  <div className="grid grid-cols-3 gap-1">
+                    {placed.map(({ control }) => (
                       <button
                         key={control.id}
-                        className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] min-w-[20px] flex-1`}
+                        className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] col-span-${control.span?.width || 1}`}
                       >
                         <span className="text-sm">
                           {control.icon === 'Play' ? '▶️' :
@@ -323,15 +359,24 @@ export function TilePreview({ config }) {
           {config.actionControls && config.actionControls.some(c => c.enabled) && (
             <div className="mt-auto">
               {(() => {
-                const enabledControls = config.actionControls.filter(c => c.enabled).slice(0, 3);
-                if (enabledControls.length === 0) return null;
+                const enabledControls = config.actionControls.filter(c => c.enabled);
+                const placed = [];
+                let currentX = 0;
+                enabledControls.forEach((control) => {
+                  const width = control.span?.width || 1;
+                  if (currentX + width <= 3) {
+                    placed.push({ control, startX: currentX });
+                    currentX += width;
+                  }
+                });
+                if (placed.length === 0) return null;
 
                 return (
-                  <div className="flex justify-center gap-1">
-                    {enabledControls.map((control) => (
+                  <div className="grid grid-cols-3 gap-1">
+                    {placed.map(({ control }) => (
                       <button
                         key={control.id}
-                        className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] min-w-[20px] flex-1`}
+                        className={`${control.color} hover:opacity-80 rounded px-1 py-1 text-xs font-medium transition-all flex items-center justify-center min-h-[20px] col-span-${control.span?.width || 1}`}
                       >
                         <span className="text-sm">
                           {control.icon === 'Play' ? '▶️' :
