@@ -12,6 +12,7 @@ import {
 import { TB, SN, clampX } from '../utils/constants.js';
 import { NotificationCenter } from './NotificationCenter.jsx';
 import { useSettings } from '../hooks/useSettings.jsx';
+import { useWindowState } from '../hooks/useWindowState.js';
 import eventBus, { TOPICS } from '../utils/eventBus.js';
 
 // Fixed: showQuickSettings error - using showNotificationCenter instead
@@ -19,12 +20,15 @@ import eventBus, { TOPICS } from '../utils/eventBus.js';
 
 /**
  * Taskbar preview popup (shows window preview on hover)
- * Connected to eventBus for dark mode styling and action execution
+ * Uses state machine for clean window state reasoning
  */
 const TaskbarPreview = memo(function TaskbarPreview({ win, activeId, cx, onClose, onMinimize, onMinMax, onActivate, onCloseWindow, onMouseEnter, onMouseLeave }) {
   const W = 280;
   const top = TB + 1;
   const left = clampX(cx - W / 2, W);
+  
+  // Use state machine to understand current window state
+  const windowState = useWindowState(win);
 
   return (
     <div 
@@ -48,11 +52,15 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, activeId, cx, onClose
           <div className="text-xs font-semibold truncate pr-2" style={{ color: 'var(--theme-text)' }}>
             {win.t}
           </div>
+          {/* State indicator */}
+          <div className="text-xs text-slate-400" title={windowState.stateDescription}>
+            {windowState.stateDescription.slice(0, 3)}
+          </div>
           <div className="flex items-center gap-1">
-            {/* Minimize/Restore button - connected via pubsub */}
+            {/* Minimize/Restore button - uses state machine logic */}
             <button 
               onClick={() => { 
-                if (win.m) {
+                if (windowState.isMinimized) {
                   // Window is minimized - restore it
                   onActivate();
                 } else if (win.id === activeId) {
@@ -70,11 +78,11 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, activeId, cx, onClose
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              title={win.m ? "Unminimize" : win.id === activeId ? "Minimize" : "Activate"}
+              title={windowState.isMinimized ? "Restore" : win.id === activeId ? "Minimize" : "Activate"}
             >
               <ChevronDown size={16}/>
             </button>
-            {/* Maximize/Restore button - connected via pubsub */}
+            {/* Maximize/Restore button - uses state machine logic */}
             <button 
               onClick={() => { onMinMax(); onClose(); }} 
               className="px-2 py-1 transition-colors"
@@ -83,11 +91,11 @@ const TaskbarPreview = memo(function TaskbarPreview({ win, activeId, cx, onClose
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              title={win.sn === SN.FULL ? "Restore" : "Maximize"}
+              title={windowState.isMaximized ? "Restore / Snap" : "Maximize / Snap"}
             >
-              {win.sn === SN.FULL ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
+              {windowState.isMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
             </button>
-            {/* Close button - connected via pubsub */}
+            {/* Close button */}
             <button 
               onClick={() => { onCloseWindow(); onClose(); }} 
               className="px-2 py-1 transition-colors"

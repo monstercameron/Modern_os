@@ -4,6 +4,7 @@ import { AppWindow, X, Maximize2, Minimize2, ChevronDown } from "lucide-react";
 import { TB, SN } from "../utils/constants.js";
 import { SnapCell, SnapIcon } from "./SnapComponents.jsx";
 import { SplashScreen } from "./SplashScreen.jsx";
+import { useWindowState } from "../hooks/useWindowState.js";
 import eventBus, { TOPICS } from "../utils/eventBus.js";
 
 // Resize handle component
@@ -113,6 +114,9 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
     };
   }, [win.id, on, setActive]);
   
+  // Use state machine to understand window state
+  const windowState = useWindowState(win);
+  
   // Min/max size constraints
   const MIN_WIDTH = 200;
   const MIN_HEIGHT = 150;
@@ -195,14 +199,26 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   const handleMaxHoverStart = useCallback(() => {
     clearTimeout(hoverTimer.current);
     setShowSpin(true);
-    hoverTimer.current = setTimeout(() => { setShowSpin(false); setShowSnap(true); }, 500);
+    hoverTimer.current = setTimeout(() => { setShowSpin(false); setShowSnap(true); }, 800);
   }, []);
   
   const handleMaxHoverEnd = useCallback(() => {
     clearTimeout(hoverTimer.current);
-    hoverTimer.current = null;
+    // Don't close immediately - let the dialog handle its own mouse leave
+    // Only close spin animation
     setShowSpin(false);
-    setShowSnap(false);
+  }, []);
+  
+  const handleSnapDialogMouseLeave = useCallback(() => {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => {
+      setShowSnap(false);
+    }, 50);
+  }, []);
+  
+  const handleSnapDialogMouseEnter = useCallback(() => {
+    clearTimeout(hoverTimer.current);
+    setShowSnap(true);
   }, []);
 
   const handleDragStart = useCallback(() => on("dragStart"), [on]);
@@ -383,20 +399,21 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
             onMouseLeave={handleMaxHoverEnd}
             onClick={(e) => { 
               e.stopPropagation(); 
-              console.log('[Win.MaxButton] Clicked for window:', win.id, 'current sn:', win.sn, 'will call:', win.sn === SN.FULL ? "unmax" : "max");
+              console.log('[Win.MaxButton] Clicked for window:', win.id, 'windowState:', windowState);
               setActive(win.id); 
-              on(win.sn === SN.FULL ? "unmax" : "max"); 
+              on(windowState.isMaximized ? "unmax" : "max"); 
             }}
             className="px-2 py-1 hover:bg-white/10 h-10"
-            title={win.sn === SN.FULL ? "Restore / Snap" : "Maximize / Snap"}
+            title={windowState.isMaximized ? "Restore / Snap" : "Maximize / Snap"}
           >
-            {win.sn === SN.FULL ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
+            {windowState.isMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
           </button>
           <button onClick={(e) => { e.stopPropagation(); setActive(win.id); on("close"); }} className="px-2 py-1 hover:bg-white/10 h-10" title="Close"><X size={16}/></button>
 
           {showSnap && (
             <div className="absolute top-full right-0 mt-1 bg-slate-900 text-white border border-white/20 p-3 grid grid-cols-6 gap-3 z-[2000] w-[360px]"
-                 onMouseEnter={() => setShowSnap(true)} onMouseLeave={() => setShowSnap(false)}>
+                 onMouseEnter={handleSnapDialogMouseEnter}
+                 onMouseLeave={handleSnapDialogMouseLeave}>
               <SnapCell ariaLabel="Full" onClick={() => on("snap", SN.FULL)} className="col-span-6"><SnapIcon type="full"/></SnapCell>
               <SnapCell ariaLabel="Left" onClick={() => on("snap", SN.LEFT)} className="col-span-3"><SnapIcon type="left"/></SnapCell>
               <SnapCell ariaLabel="Right" onClick={() => on("snap", SN.RIGHT)} className="col-span-3"><SnapIcon type="right"/></SnapCell>
