@@ -124,6 +124,26 @@
     .tile--pitch{padding:20px}
   }
 
+  /* ---------- live demo ---------- */
+  .demo{position:relative;aspect-ratio:16/10;background:#000;overflow:hidden}
+  .demo img{width:100%;height:100%;object-fit:cover;object-position:center top;opacity:.35}
+  .demo iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+  .demo__boot{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:rgba(0,0,0,.35);border:0;cursor:pointer;color:#fff;font-family:var(--mono);width:100%;
+  }
+  .demo__boot b{
+    font-family:var(--mono);font-weight:500;font-size:14px;letter-spacing:.02em;
+    background:#fff;color:#000;padding:14px 26px;
+  }
+  .demo__boot span{font-size:11px;letter-spacing:.06em;color:rgba(255,255,255,.8);background:rgba(0,0,0,.72);padding:6px 12px}
+  .demo__boot:hover b{background:var(--azure)}
+  .demo__note{
+    display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:var(--gap);
+    font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.04em;
+  }
+  @media(max-width:720px){ .demo{aspect-ratio:4/5} }
+
   /* ---------- sections ---------- */
   .section{padding:64px 0;border-top:1px solid var(--line)}
   .eyebrow{
@@ -188,6 +208,7 @@
 <div class="taskbar">
   <span class="brand"><span class="chip"></span> Modern OS</span>
   <nav class="tbnav">
+    <a href="#demo">Demo</a>
     <a href="#desktop" class="hide-sm">Desktop</a>
     <a href="#tiles" class="hide-sm">Tiles</a>
     <a href="#windows" class="hide-sm">Windows</a>
@@ -234,6 +255,28 @@
 </header>
 
 <main>
+
+<section class="section" id="demo" style="--key:var(--azure)">
+  <div class="wrap">
+    <p class="eyebrow">Live</p>
+    <h2>Boot it here.</h2>
+    <p class="lede">The real thing, running in the page. Click a tile to open an app, drag a window by its title bar, right-click the desktop, or open the action center from the taskbar clock. <strong>Nothing is recorded and nothing is saved to a server</strong> — it is all running in your browser.</p>
+    <div class="frame">
+      <div class="frame__bar">modern os <span id="demo-state">not started</span></div>
+      <div class="demo" id="demo-stage">
+        <img src="screenshots/desktop.png" alt="" width="1920" height="1200" />
+        <button class="demo__boot" id="demo-boot" type="button">
+          <b>Boot the desktop</b>
+          <span>loads the app in this page</span>
+        </button>
+      </div>
+    </div>
+    <p class="demo__note">
+      <span>best on a wide screen</span>
+      <a href="app/" target="_blank" rel="noopener">open full screen ↗</a>
+    </p>
+  </div>
+</section>
 
 <section class="section" id="desktop" style="--key:var(--azure)">
   <div class="wrap">
@@ -393,6 +436,19 @@ npm run build:pages</pre>
   const clock = document.getElementById('clock');
   const tick = () => clock.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   tick(); setInterval(tick, 15000);
+
+  // the demo boots on demand, so the page stays light until you ask for it
+  const boot = document.getElementById('demo-boot');
+  boot.addEventListener('click', () => {
+    const stage = document.getElementById('demo-stage');
+    const frame = document.createElement('iframe');
+    frame.src = 'app/';
+    frame.title = 'Modern OS, running live';
+    frame.setAttribute('allow', 'fullscreen');
+    stage.innerHTML = '';
+    stage.appendChild(frame);
+    document.getElementById('demo-state').textContent = 'running';
+  });
 
   // the live tile: flip through faces the way a real tile does
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
