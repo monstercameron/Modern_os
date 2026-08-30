@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DesktopGrid } from '../../components/DesktopGrid.jsx';
 import { useKernel, dispatch, actions, select } from '../../kernel/index.js';
@@ -6,6 +6,7 @@ import keymap, { SCOPES } from '../../services/keymap.js';
 import eventBus from '../../utils/eventBus.js';
 import { LAUNCHER_PAN } from '../../components/DesktopGrid.jsx';
 import { TB } from '../../utils/constants.js';
+import { useInertWhenClosed } from '../../hooks/useInertWhenClosed.js';
 
 /**
  * The start screen, presented as an overlay above the windows.
@@ -18,6 +19,10 @@ export function Launcher({ apps, badges, onOpen, onQuick, animatingBadge }) {
   const open = useKernel(select.isLauncherOpen);
   const tileSizes = useKernel(select.tileSizes);
   const editMode = useKernel(select.tileEditMode);
+  const rootRef = useRef(null);
+
+  // A shut start screen must not be in the tab order while it animates away.
+  useInertWhenClosed(rootRef, open);
 
   // Counts openings, purely to key the board so its filter and selection start
   // fresh every time.
@@ -51,6 +56,7 @@ export function Launcher({ apps, badges, onOpen, onQuick, animatingBadge }) {
       {open && (
         <motion.div
           key="launcher"
+          ref={rootRef}
           data-launcher="open"
           className="absolute inset-0 z-[1400]"
           style={{ top: TB }}

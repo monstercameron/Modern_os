@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Bell, BellOff, Check, ChevronDown, Settings2,
@@ -8,6 +8,8 @@ import {
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useTheme } from '../ThemeContext.jsx';
 import { useMotion } from '../hooks/useMotion.js';
+import { useInertWhenClosed } from '../hooks/useInertWhenClosed.js';
+import { wrapTab, focusablesIn } from '../utils/focus.js';
 import keymap, { SCOPES } from '../services/keymap.js';
 import MediaControls from './MediaControls.jsx';
 import eventBus from '../utils/eventBus.js';
@@ -68,6 +70,43 @@ export function NotificationCenter({ isOpen, onClose }) {
   const [notifications, setNotifications] = useState(seed);
   const [collapsed, setCollapsed] = useState({});
   const [now, setNow] = useState(() => Date.now());
+  const rootRef = useRef(null);
+
+  // Closed, but still on screen for a moment: keep it out of the tab order.
+  useInertWhenClosed(rootRef, isOpen);
+
+  /*
+   * A dialog that opens without taking focus leaves the keyboard behind in
+   * whatever window was underneath, so the first Tab goes somewhere the user
+   * is not looking. Focus moves in on open and goes back to whatever opened it
+   * on close — the taskbar button — rather than being dropped on the body.
+   */
+  const returnFocusTo = useRef(null);
+  useEffect(() => {
+    if (isOpen) {
+      returnFocusTo.current = document.activeElement;
+      // The effect runs after the commit, so the panel is already in the DOM.
+      // Deferring to a frame would hand focus over only once the tab is
+      // visible, which is exactly when it is too late to matter.
+      const root = rootRef.current;
+      if (root && !root.contains(document.activeElement)) {
+        (focusablesIn(root)[0] || root).focus({ preventScroll: true });
+      }
+      return undefined;
+    }
+    const back = returnFocusTo.current;
+    returnFocusTo.current = null;
+    if (back && document.contains(back)) back.focus({ preventScroll: true });
+    return undefined;
+  }, [isOpen]);
+
+  /*
+   * The panel owns the keyboard while it is up, so Tab wraps inside it rather
+   * than walking out into the desktop behind the scrim.
+   */
+  const onPanelKeyDown = useCallback((e) => {
+    if (wrapTab(rootRef.current, e)) e.preventDefault();
+  }, []);
 
   /*
    * Escape goes through the keymap rather than a raw window listener. The
@@ -146,6 +185,9 @@ export function NotificationCenter({ isOpen, onClose }) {
 
           <motion.aside
             data-notification-center
+            ref={rootRef}
+            tabIndex={-1}
+            onKeyDown={onPanelKeyDown}
             role="dialog"
             aria-label="Notifications and quick settings"
             className="fixed right-0 z-[1800] flex flex-col border-l w-full sm:w-[400px]"
@@ -294,16 +336,25 @@ export function NotificationCenter({ isOpen, onClose }) {
 function NotificationRow({ n, now, onRead, onDismiss }) {
   return (
     <div
-      className="group/row relative flex gap-3 px-4 py-2.5 cursor-pointer transition-colors hover:bg-[var(--theme-surface-alt)]"
+      className="group/row relative flex gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--theme-surface-alt)]"
       style={{ backgroundColor: n.unread ? 'var(--theme-accent-soft)' : 'transparent' }}
-      onClick={() => n.unread && onRead(n.id)}
     >
       {/* The unread mark is an edge, not a dot: it survives a dense list. */}
       {n.unread && (
         <span className="absolute left-0 top-0 bottom-0 w-[2px]" style={{ backgroundColor: 'var(--theme-accent)' }} />
       )}
 
-      <div className="flex-1 min-w-0">
+      {/*
+        A real button, not a div with a click handler: marking a notification
+        read is an action, and Tab has to be able to reach it and Enter has to
+        work. The button carries the whole body so the hit area is unchanged.
+      */}
+      <button
+        type="button"
+        onClick={() => n.unread && onRead(n.id)}
+        aria-label={n.unread ? `Mark as read: ${n.title}` : n.title}
+        className="flex-1 min-w-0 text-left cursor-pointer"
+      >
         <div className="flex items-baseline gap-2">
           <span className="text-[12px] font-medium truncate" style={{ color: 'var(--theme-text)' }}>
             {n.title}
@@ -315,10 +366,10 @@ function NotificationRow({ n, now, onRead, onDismiss }) {
         <p className="text-[12px] leading-snug line-clamp-2 mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>
           {n.message}
         </p>
-      </div>
+      </button>
 
       <button
-        onClick={(e) => { e.stopPropagation(); onDismiss(n.id); }}
+        onClick={() => onDismiss(n.id)}
         aria-label={`Dismiss: ${n.title}`}
         className="self-start opacity-0 group-hover/row:opacity-100 focus:opacity-100 transition-opacity p-0.5"
         style={{ color: 'var(--theme-text-muted)' }}

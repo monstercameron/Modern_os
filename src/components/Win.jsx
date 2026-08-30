@@ -10,6 +10,7 @@ import { useWindowState } from "../hooks/useWindowState.js";
 import { useContextMenu } from "../hooks/useContextMenu.js";
 import { CONTEXT_TYPES, MENU_ACTIONS } from "../utils/contextMenuStateMachine.js";
 import eventBus, { TOPICS } from "../utils/eventBus.js";
+import { wrapTab, focusablesIn } from "../utils/focus.js";
 import { useKernel, select } from "../kernel/index.js";
 
 // Resize handle component
@@ -369,6 +370,34 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
 
   const divRef = useRef(null);
 
+  /*
+   * Tab belongs to the focused window.
+   *
+   * Every window is in the same document, so an untouched Tab walked out of the
+   * window you were working in and on through the one behind it, and through
+   * the taskbar, in DOM order — which has nothing to do with what is on top.
+   * Inside the focused window Tab now wraps at both ends; moving between
+   * windows is what $mod+arrows and $mod+period are for.
+   */
+  const onWindowKeyDown = useCallback((e) => {
+    if (!active || e.key !== 'Tab') return;
+    if (wrapTab(divRef.current, e)) e.preventDefault();
+  }, [active]);
+
+  /*
+   * A newly focused window takes the keyboard with it, so the next Tab starts
+   * inside it rather than wherever focus happened to be left. If something in
+   * the window already has focus — the app autofocused its input, or the user
+   * clicked straight onto a control — that wins and nothing moves.
+   */
+  useEffect(() => {
+    if (!active) return;
+    const root = divRef.current;
+    if (!root || root.contains(document.activeElement)) return;
+    const target = focusablesIn(root)[0] || root;
+    target.focus({ preventScroll: true });
+  }, [active]);
+
   // CRITICAL: animateValue controls Framer Motion animation
   // When dragCur is true, animateValue is undefined which disables animation.
   // This allows manual dragging without animation interference.
@@ -384,6 +413,8 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       style={baseStyle}
       data-window
       data-window-id={win.id}
+      tabIndex={-1}
+      onKeyDown={onWindowKeyDown}
       data-focused={active ? 'true' : 'false'}
       data-floating={win.floating ? 'true' : 'false'}
       initial={initialPosition || animateStyle}
