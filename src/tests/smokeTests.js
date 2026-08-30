@@ -1,6 +1,9 @@
 import { TB, SN, B0, clampX } from '../utils/constants.js';
 import { qb, bottomRect, halfRects } from '../utils/geometry.js';
 import { buildTargetsFor, chooseBestTarget } from '../utils/snapHelpers.js';
+
+/** The smoke tests run in the browser, so they can measure the real one. */
+const view = () => ({ w: window.innerWidth, h: window.innerHeight });
 import { clearBadgeState } from '../utils/appHelpers.js';
 
 /**
@@ -12,7 +15,8 @@ export function runSmokeTests(StubApp) {
   
   // Test 1: qb() positive & distinct
   try {
-    const r0 = qb(0), r1 = qb(1), r2 = qb(2), r3 = qb(3);
+    const v = view();
+    const r0 = qb(0, v), r1 = qb(1, v), r2 = qb(2, v), r3 = qb(3, v);
     const positive = [r0, r1, r2, r3].every(r => r.w > 0 && r.h > 0 && r.y >= TB);
     const distinct = new Set([
       `${r0.x},${r0.y}`, 
@@ -45,7 +49,7 @@ export function runSmokeTests(StubApp) {
       w: window.innerWidth, 
       h: (window.innerHeight - TB) / 2 
     };
-    const bottom = bottomRect();
+    const bottom = bottomRect(view());
     res.push({ 
       name: "bottom snap geometry", 
       ok: bottom.y > top.y && Math.abs(bottom.w - top.w) < 1 
@@ -75,7 +79,7 @@ export function runSmokeTests(StubApp) {
   // Test 5: drag targets from LEFT snap
   try {
     const w = { sn: SN.LEFT, b: { x: 0, y: TB, w: 100, h: 100 } };
-    const t = buildTargetsFor(w);
+    const t = buildTargetsFor(w, view());
     res.push({ 
       name: "drag targets from LEFT", 
       ok: t.length === 1 && t[0].payload === SN.RIGHT 
@@ -99,8 +103,8 @@ export function runSmokeTests(StubApp) {
   try {
     const ghost = { x: window.innerWidth * 0.6, y: TB + 20, w: 320, h: 240 };
     const best = chooseBestTarget([
-      { id: 'LEFT', type: 'snap', payload: SN.LEFT, rect: halfRects().LEFT },
-      { id: 'RIGHT', type: 'snap', payload: SN.RIGHT, rect: halfRects().RIGHT }
+      { id: 'LEFT', type: 'snap', payload: SN.LEFT, rect: halfRects(view()).LEFT },
+      { id: 'RIGHT', type: 'snap', payload: SN.RIGHT, rect: halfRects(view()).RIGHT }
     ], ghost);
     res.push({ 
       name: 'best target selection', 

@@ -14,11 +14,6 @@ import { qb, ghostFromPoint } from '../utils/geometry.js';
 import { pickNeighbour } from '../utils/spatialNav.js';
 import { acc, clearBadgeState } from '../utils/appHelpers.js';
 import { isSingleInstance, getMaxInstances } from '../config/manifests.js';
-import {
-  displayEnumToState,
-  snapEnumToState,
-  resolveAction,
-} from '../utils/windowStateMachine.js';
 import { ActionTypes as T } from './actions.js';
 import * as bsp from './layout/bsp.js';
 import {
@@ -47,31 +42,37 @@ export const initialState = {
   animatingBadge: null,
   /** True while the keyboard is latched into resize mode. */
   resizeMode: false,
+  /*
+   * The environment the layout is computed against.
+   *
+   * The reducer used to read window.innerWidth and getComputedStyle directly,
+   * which meant the same (state, action) pair produced different results in a
+   * different browser window and could not be tested at all. The shell measures
+   * these and dispatches setEnv; the reducer only ever reads them from state.
+   */
+  env: { viewport: { w: 1280, h: 800 }, gap: bsp.GAP },
 };
 
 // ---------- helpers ----------
 
-const viewport = () => ({
-  w: typeof window === 'undefined' ? 1280 : window.innerWidth,
-  h: typeof window === 'undefined' ? 800 : window.innerHeight,
-});
+const viewport = (state) => state.env.viewport;
 
 /** Full-screen bounds below the taskbar. */
-function fullBounds() {
-  const { w, h } = viewport();
+function fullBounds(state) {
+  const { w, h } = viewport(state);
   return { x: 0, y: TB, w, h: h - TB };
 }
 
 /** Bounds for a half-screen snap. */
-function halfBounds(snapType) {
-  const { w, h } = viewport();
+function halfBounds(state, snapType) {
+  const { w, h } = viewport(state);
   const usableH = h - TB;
   switch (snapType) {
     case SN.LEFT: return { x: 0, y: TB, w: w / 2, h: usableH };
     case SN.RIGHT: return { x: w / 2, y: TB, w: w / 2, h: usableH };
     case SN.TOP: return { x: 0, y: TB, w, h: usableH / 2 };
     case SN.BOTTOM: return { x: 0, y: TB + usableH / 2, w, h: usableH / 2 };
-    case SN.FULL: return fullBounds();
+    case SN.FULL: return fullBounds(state);
     default: return null;
   }
 }
@@ -82,22 +83,13 @@ function withRestorePoint(win) {
 }
 
 /** The area tiled windows share: the viewport below the taskbar. */
-function tilingArea() {
-  const { w, h } = viewport();
+function tilingArea(state) {
+  const { w, h } = viewport(state);
   return { x: 0, y: TB, w, h: h - TB };
 }
 
-/**
- * Spacing between tiled windows, read from the theme so it stays configurable.
- * Falls back to the layout default when there is no document (tests, SSR).
- */
-function windowGap() {
-  if (typeof document === 'undefined') return bsp.GAP;
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--theme-window-gap');
-  const parsed = parseFloat(raw);
-  return Number.isFinite(parsed) ? parsed : bsp.GAP;
-}
+/** Spacing between tiled windows, measured by the shell and kept in state. */
+const windowGap = (state) => state.env.gap;
 
 /**
  * Whether the layout should give this window a rectangle right now. Delegated
@@ -119,26 +111,29 @@ function step(win, action, extra = {}) {
  * Recompute the tree for a workspace and write the resulting rectangles onto
  * its tiled windows. Floating windows keep whatever bounds they had.
  */
-function retile(state, workspace) {
+function retile(state, workspace, { insertNextTo } = {}) {
   const tiledIds = new Set(
     state.windows.filter((w) => w.ws === workspace && isTiled(w)).map((w) => w.id)
   );
 
   let tree = bsp.prune(state.layouts[workspace] || null, tiledIds);
 
-  // Anything tiled but missing from the tree (restored, un-floated, moved in)
-  // gets inserted next to whatever is focused.
+  /*
+   * Anything tiled but missing from the tree (opened, restored, un-floated,
+   * moved in) is inserted beside a leaf. The caller can name that leaf —
+   * WINDOW_OPEN passes the window that was focused before the new one — and
+   * otherwise we fall back to whatever is focused now.
+   */
+  const preferred = insertNextTo ?? state.activeId;
   for (const id of tiledIds) {
     if (!bsp.has(tree, id)) {
-      const rects = bsp.computeBounds(tree, tilingArea(), windowGap());
-      const target = tiledIds.has(state.activeId) && state.activeId !== id
-        ? state.activeId
-        : null;
+      const rects = bsp.computeBounds(tree, tilingArea(state), windowGap(state));
+      const target = tiledIds.has(preferred) && preferred !== id ? preferred : null;
       tree = bsp.insert(tree, id, target, rects);
     }
   }
 
-  const bounds = bsp.computeBounds(tree, tilingArea(), windowGap());
+  const bounds = bsp.computeBounds(tree, tilingArea(state), windowGap(state));
   const windows = state.windows.map((w) => {
     if (w.ws !== workspace || !isTiled(w)) return w;
     const b = bounds.get(w.id);
@@ -159,8 +154,8 @@ function retileAll(state) {
 }
 
 /** Take a window out of tiling and give it a floating rectangle. */
-function floatRect(win) {
-  const { w: vw, h: vh } = viewport();
+function floatRect(state, win) {
+  const { w: vw, h: vh } = viewport(state);
   const width = Math.round(Math.min(Math.max(win.b?.w ?? 760, 420), vw * 0.7));
   const height = Math.round(Math.min(Math.max(win.b?.h ?? 500, 300), (vh - TB) * 0.8));
   return {
@@ -171,15 +166,6 @@ function floatRect(win) {
   };
 }
 
-/** Ask the state machine whether this action is legal for the window's state. */
-function permits(win, userAction) {
-  const resolved = resolveAction(
-    displayEnumToState(win.m),
-    snapEnumToState(win.sn),
-    userAction
-  );
-  return resolved && resolved.valid ? resolved : null;
-}
 
 /** Replace one window by id, dropping it when the updater returns null. */
 function mapWindow(state, id, updater) {
@@ -230,18 +216,32 @@ export function reducer(state, action) {
 
       const onThisApp = state.windows.filter((w) => w.appId === app.id);
 
-      // Single-instance apps focus the window they already have.
+      /*
+       * Single-instance apps focus the window they already have — and go to it.
+       *
+       * This used to set activeId and stop there. If the window was on another
+       * workspace you stayed where you were, reconcileActive noticed the active
+       * window was not visible and quietly picked a different one, so opening
+       * Settings from workspace 3 focused whatever happened to be in front. And
+       * un-minimising it wrote m:false without retiling, so a window that had
+       * been dropped from the BSP tree came back holding whatever stale
+       * rectangle it was hiding with.
+       */
       if (isSingleInstance(app.id) && onThisApp.length > 0) {
         const existing = onThisApp[0];
         const restored = mapWindow(state, existing.id, (w) => ({ ...w, m: false }));
-        return reconcileActive(
-          raise({ ...restored, activeId: existing.id, launcherOpen: false }, existing.id)
-        );
+        const followed = {
+          ...restored,
+          workspaces: { ...restored.workspaces, current: existing.ws },
+          activeId: existing.id,
+          launcherOpen: false,
+        };
+        return reconcileActive(raise(retile(followed, existing.ws), existing.id));
       }
 
       if (onThisApp.length >= getMaxInstances(app.id)) return state;
 
-      const id = uid();
+      const id = action.id;
       const workspace = state.workspaces.current;
       const onWorkspace = state.windows.filter((w) => w.ws === workspace).length;
 
@@ -254,7 +254,7 @@ export function reducer(state, action) {
         ax: acc(app.color),
         // retile() assigns the real rectangle; this is only a starting point
         // for the open animation.
-        b: tilingArea(),
+        b: tilingArea(state),
         sn: SN.NONE,
         z: 1000,
         m: false,
@@ -265,16 +265,26 @@ export function reducer(state, action) {
       };
       void onWorkspace;
 
-      // Split whatever is focused, so the new window halves its neighbour.
+      /*
+       * Split the pane that was focused when the window opened.
+       *
+       * activeId was being set to the new window before retile() ran, so the
+       * insert target — "the focused leaf" — resolved to a window that was not
+       * in the tree yet, retile() fell back to null, and BSP put every new
+       * window beside its last leaf instead. The README says a new window
+       * splits the focused one; now it does. Focus moves to the new window
+       * after the tree has been built against the old one.
+       */
+      const splitTarget = state.activeId;
       const withWindow = {
         ...state,
         windows: [...state.windows, win],
-        activeId: id,
         launcherOpen: false,
         badges: clearBadgeState(state.badges, app.id),
       };
 
-      return reconcileActive(raise(retile(withWindow, workspace), id));
+      const tiled = retile(withWindow, workspace, { insertNextTo: splitTarget });
+      return reconcileActive(raise({ ...tiled, activeId: id }, id));
     }
 
     // ---------- open a child window (About) ----------
@@ -283,7 +293,7 @@ export function reducer(state, action) {
       const parent = state.windows.find((w) => w.id === parentId);
       if (!app || !parent) return state;
 
-      const id = uid();
+      const id = action.id || uid();
       const width = 400;
       const height = 300;
       const win = {
@@ -391,7 +401,7 @@ export function reducer(state, action) {
         const moved = step(w, WA.TOGGLE_PLACEMENT);
         if (!moved) return w;
         return goingFloating
-          ? { ...moved, sn: SN.NONE, b: floatRect(w), prevB: w.b }
+          ? { ...moved, sn: SN.NONE, b: floatRect(state, w), prevB: w.b }
           : { ...moved, sn: SN.NONE };
       });
 
@@ -408,47 +418,44 @@ export function reducer(state, action) {
     case T.WINDOW_RETILE:
       return retileAll(state);
 
-    // ---------- maximize ----------
+    /*
+     * ---------- maximize ----------
+     *
+     * These three used to set the snap field by hand, which meant the state
+     * machine modelled FULLSCREEN while the reducer decided it independently —
+     * two authorities for one fact. Every branch now goes through step(), and
+     * a refusal (already fullscreen, minimized) leaves the state alone instead
+     * of writing a contradiction.
+     */
     case T.WINDOW_MAXIMIZE: {
       const target = state.windows.find((w) => w.id === action.id);
       if (!target) return state;
-      const next = mapWindow(state, action.id, (w) => ({
-        ...w,
-        m: false,
-        prevB: w.b,
-        prevSN: w.sn,
-        sn: SN.FULL,
-        b: fullBounds(),
-      }));
+      const stepped = step(target, WA.FULLSCREEN, { prevB: target.b, b: fullBounds(state) });
+      if (!stepped) return state;
+      const next = mapWindow(state, action.id, () => ({ ...stepped, prevSN: target.sn }));
       return retile(reconcileActive(next), target.ws);
     }
 
     case T.WINDOW_UNMAXIMIZE: {
       const target = state.windows.find((w) => w.id === action.id);
       if (!target) return state;
-      const next = mapWindow(state, action.id, (w) => ({
-        ...w,
-        sn: w.prevSN === SN.FULL ? SN.NONE : (w.prevSN ?? SN.NONE),
-        b: w.floating ? (w.prevB ?? { ...B0 }) : w.b,
-      }));
-      return retile(next, target.ws);
+      const stepped = step(target, WA.LEAVE_FULLSCREEN, {
+        b: target.floating ? (target.prevB ?? { ...B0 }) : target.b,
+      });
+      if (!stepped) return state;
+      return retile(mapWindow(state, action.id, () => stepped), target.ws);
     }
 
     case T.WINDOW_TOGGLE_MAXIMIZE: {
       const target = state.windows.find((w) => w.id === action.id);
       if (!target) return state;
-      const next = mapWindow(state, action.id, (w) =>
-        w.sn === SN.FULL
-          ? {
-              ...w,
-              m: false,
-              sn: SN.NONE,
-              b: w.floating ? (w.prevB ?? { ...B0 }) : w.b,
-            }
-          : { ...w, m: false, prevB: w.b, prevSN: w.sn, sn: SN.FULL, b: fullBounds() }
-      );
+      const goingFull = target.sn !== SN.FULL;
+      const stepped = step(target, WA.TOGGLE_FULLSCREEN, goingFull
+        ? { prevB: target.b, prevSN: target.sn, b: fullBounds(state) }
+        : { b: target.floating ? (target.prevB ?? { ...B0 }) : target.b });
+      if (!stepped) return state;
       return retile(
-        reconcileActive(raise({ ...next, activeId: action.id }, action.id)),
+        reconcileActive(raise({ ...mapWindow(state, action.id, () => stepped), activeId: action.id }, action.id)),
         target.ws
       );
     }
@@ -457,7 +464,7 @@ export function reducer(state, action) {
     // Snapping and dragging are floating gestures: a tiled window that gets
     // snapped or moved by hand leaves the tree and stays where it was put.
     case T.WINDOW_SNAP: {
-      const bounds = halfBounds(action.snapType);
+      const bounds = halfBounds(state, action.snapType);
       const target = state.windows.find((w) => w.id === action.id);
       if (!bounds || !target) return state;
       const next = mapWindow(state, action.id, (w) => ({
@@ -538,6 +545,21 @@ export function reducer(state, action) {
       );
     }
 
+    /*
+     * The environment the layout is measured against. The shell dispatches
+     * this on boot, on resize and when the theme's window gap changes.
+     */
+    case T.ENV_SET: {
+      const viewport = action.viewport || state.env.viewport;
+      const gap = Number.isFinite(action.gap) ? action.gap : state.env.gap;
+      if (
+        viewport.w === state.env.viewport.w &&
+        viewport.h === state.env.viewport.h &&
+        gap === state.env.gap
+      ) return state;
+      return retileAll({ ...state, env: { viewport, gap } });
+    }
+
     case T.RESIZE_MODE_SET:
       return state.resizeMode === !!action.on
         ? state
@@ -565,6 +587,18 @@ export function reducer(state, action) {
       const { bounds, snapped } = action;
       const target = state.windows.find((w) => w.id === action.id);
       if (!bounds || !target) return state;
+
+      /*
+       * The layout owns a tiled window's geometry.
+       *
+       * A plain SET_BOUNDS on a tiled window used to be accepted, which wrote a
+       * rectangle the BSP tree knew nothing about — the next retile silently
+       * threw it away, and until then the window sat somewhere the tree did not
+       * think it was. Snapping is different: it is a hand gesture, so it floats
+       * the window first and the machine agrees that it may.
+       */
+      if (!snapped && isTiled(target)) return state;
+
       const next = mapWindow(state, action.id, (w) =>
         snapped
           ? { ...w, prevB: withRestorePoint(w), prevSN: w.sn, sn: SN.NONE, b: bounds, floating: true }
@@ -605,7 +639,24 @@ export function reducer(state, action) {
       // Windows on workspaces that no longer exist come back to the last one.
       const windows = state.windows.map((w) => (w.ws > count ? { ...w, ws: count } : w));
       const current = Math.min(state.workspaces.current, count);
-      return reconcileActive({ ...state, windows, workspaces: { current, count } });
+
+      /*
+       * The trees have to move with them. Shrinking 5 to 2 used to leave the
+       * windows on workspace 2 holding rectangles computed for the workspace
+       * they came from, and left the trees for 3, 4 and 5 in state forever —
+       * so growing back to 5 restored a layout for windows that were no longer
+       * there.
+       */
+      const layouts = {};
+      for (const [ws, tree] of Object.entries(state.layouts)) {
+        if (Number(ws) <= count) layouts[ws] = tree;
+      }
+
+      const moved = reconcileActive({ ...state, windows, layouts, workspaces: { current, count } });
+      const touched = new Set(moved.windows.map((w) => w.ws));
+      let next = moved;
+      for (const ws of touched) next = retile(next, ws);
+      return next;
     }
 
     case T.WINDOW_MOVE_TO_WORKSPACE: {

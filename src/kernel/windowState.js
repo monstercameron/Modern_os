@@ -17,6 +17,14 @@
  * allowed to invent a window state.
  */
 
+/*
+ * The two snap values the display axis cares about. Everything else `sn` can
+ * hold — the halves and quadrants — belongs to snapping, which is a separate
+ * concern from whether a window is fullscreen.
+ */
+const FULLSCREEN_SNAP = 'FULL';
+const NO_SNAP = 'NONE';
+
 export const PLACEMENT = {
   TILED: 'tiled',
   FLOATING: 'floating',
@@ -49,11 +57,10 @@ export function readState(win) {
     placement: win.floating ? PLACEMENT.FLOATING : PLACEMENT.TILED,
     display: win.m
       ? DISPLAY.MINIMIZED
-      : win.sn === 'FULL'
-        ? DISPLAY.FULLSCREEN
-        : DISPLAY.NORMAL,
+      : (win.sn === FULLSCREEN_SNAP ? DISPLAY.FULLSCREEN : DISPLAY.NORMAL),
   };
 }
+
 
 /**
  * Resolve an action against a state.
@@ -133,15 +140,39 @@ export function transition({ placement, display }, action) {
 }
 
 /** Apply a resolved state back onto a window object's fields. */
+/**
+ * Apply a resolved state back onto a window object.
+ *
+ * This is the whole canonical representation, not part of it. It used to write
+ * only `floating` and `m`, so the machine could resolve to FULLSCREEN and the
+ * stored window would not say so — and the reducer's maximize branches set the
+ * snap field by hand instead, which is two places deciding the same thing. The
+ * machine decides; `prevSN` carries what the window was snapped to so leaving
+ * fullscreen puts it back.
+ */
 export function applyState(win, { placement, display }) {
+  const wasFullscreen = win.sn === FULLSCREEN_SNAP;
+  let sn = win.sn;
+
+  if (display === DISPLAY.FULLSCREEN && !wasFullscreen) sn = FULLSCREEN_SNAP;
+  if (display !== DISPLAY.FULLSCREEN && wasFullscreen) {
+    sn = win.prevSN === FULLSCREEN_SNAP ? NO_SNAP : (win.prevSN ?? NO_SNAP);
+  }
+
   return {
     ...win,
     floating: placement === PLACEMENT.FLOATING,
     m: display === DISPLAY.MINIMIZED,
+    sn,
   };
 }
 
-/** Is this window laid out by the tiling engine right now? */
+/**
+ * Whether the layout should be giving this window a rectangle right now.
+ *
+ * A fullscreen window is still tiled, but the layout does not place it — it
+ * covers the workspace — so it drops out of the tree until it comes back.
+ */
 export const participatesInLayout = (win) => {
   const { placement, display } = readState(win);
   return placement === PLACEMENT.TILED && display === DISPLAY.NORMAL;

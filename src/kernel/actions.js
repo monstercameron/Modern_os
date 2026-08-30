@@ -3,7 +3,12 @@
  *
  * Typed action creators. These replace the stringly-typed act(id, "type", payload)
  * dispatcher — every state change in the desktop goes through one of these.
+ *
+ * Creators are where impurity is allowed to live: minting an id or reading the
+ * clock happens here so the reducer stays a pure function of (state, action).
  */
+
+import { uid } from '../utils/constants.js';
 
 export const ActionTypes = {
   // Windows
@@ -21,6 +26,7 @@ export const ActionTypes = {
   WINDOW_FOCUS_DIRECTION: 'window/focusDirection',
   WINDOW_MOVE_DIRECTION: 'window/moveDirection',
   RESIZE_MODE_SET: 'ui/resizeMode',
+  ENV_SET: 'env/set',
   WINDOW_SNAP_QUAD: 'window/snapQuad',
   WINDOW_SET_BOUNDS: 'window/setBounds',
   WINDOW_MOVE_TO: 'window/moveTo',
@@ -53,7 +59,15 @@ export const ActionTypes = {
 // ---------- Windows ----------
 
 /** @param {object} app - APPS entry  @param {object} init - initial app data */
-export const openWindow = (app, init = {}) => ({ type: ActionTypes.WINDOW_OPEN, app, init });
+/*
+ * Window ids are minted here, not in the reducer.
+ *
+ * uid() is the one piece of a window's identity that cannot be derived from
+ * (state, action), and having the reducer call it made the same dispatch
+ * produce a different state every time — untestable, and not a reducer. The
+ * action carries the id; the reducer stays a pure function of its inputs.
+ */
+export const openWindow = (app, init = {}) => ({ type: ActionTypes.WINDOW_OPEN, app, init, id: uid() });
 
 export const closeWindow = (id) => ({ type: ActionTypes.WINDOW_CLOSE, id });
 export const focusWindow = (id) => ({ type: ActionTypes.WINDOW_FOCUS, id });
@@ -124,3 +138,11 @@ export const setPref = (key, value) => ({ type: ActionTypes.PREFS_SET, key, valu
 export const setBadge = (appId, count) => ({ type: ActionTypes.BADGE_SET, appId, count });
 export const clearBadge = (appId) => ({ type: ActionTypes.BADGE_CLEAR, appId });
 export const animateBadge = (appId) => ({ type: ActionTypes.BADGE_ANIMATE, appId });
+
+/**
+ * Tell the kernel how big the screen is and how wide the window gap is.
+ *
+ * The layout is computed from these, and the reducer must not measure them
+ * itself: the shell owns the DOM, so the shell measures and dispatches.
+ */
+export const setEnv = ({ viewport, gap }) => ({ type: ActionTypes.ENV_SET, viewport, gap });

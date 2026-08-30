@@ -35,15 +35,15 @@ export const chooseBestTarget = (targets, ghost) => {
 };
 
 // snap targets based on current state
-export const buildTargetsFor = (w) => {
+export const buildTargetsFor = (w, view) => {
   const t = [];
-  const halves = halfRects();
+  const halves = halfRects(view);
   if (w.sn === SN.LEFT)  t.push({ id: 'RIGHT', type: 'snap', payload: SN.RIGHT, rect: halves.RIGHT });
   else if (w.sn === SN.RIGHT) t.push({ id: 'LEFT', type: 'snap', payload: SN.LEFT, rect: halves.LEFT });
   else if (w.sn === SN.TOP)  t.push({ id: 'BOTTOM', type: 'snap', payload: SN.BOTTOM, rect: halves.BOTTOM });
   else if (w.sn === SN.BOTTOM) t.push({ id: 'TOP', type: 'snap', payload: SN.TOP, rect: halves.TOP });
   else if (w.sn === SN.QUAD) {
-    const qs = quadRects();
+    const qs = quadRects(view);
     const cx = w.b.x + w.b.w/2, cy = w.b.y + w.b.h/2;
     qs.forEach((r, idx) => {
       const inRect = cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
@@ -54,7 +54,7 @@ export const buildTargetsFor = (w) => {
     t.push({ id: 'RIGHT', type: 'snap', payload: SN.RIGHT, rect: halves.RIGHT });
     t.push({ id: 'TOP', type: 'snap', payload: SN.TOP, rect: halves.TOP });
     t.push({ id: 'BOTTOM', type: 'snap', payload: SN.BOTTOM, rect: halves.BOTTOM });
-    quadRects().forEach((r, idx) => t.push({ id: `Q${idx}`, type: 'snapQuad', payload: idx, rect: r }));
+    quadRects(view).forEach((r, idx) => t.push({ id: `Q${idx}`, type: 'snapQuad', payload: idx, rect: r }));
   }
   return t;
 };

@@ -1,71 +1,35 @@
 /**
- * useWindowState Hook
- * 
- * Provides a clean interface for managing window state using the state machine.
- * Abstracts away complex state transitions and ensures only valid states are reached.
+ * A window's state, read through the one machine that owns it.
+ *
+ * This used to sit on utils/windowStateMachine.js — a second, older machine
+ * with its own display and snap enums, kept alive only by this hook while the
+ * kernel had already moved to kernel/windowState.js. Two machines describing
+ * the same window is two chances to disagree about it, so the old one is gone
+ * and this derives from the same transition table the reducer runs.
  */
 
 import { useMemo } from 'react';
-import {
-  WINDOW_DISPLAY_STATE,
-  WINDOW_SNAP_STATE,
-  displayEnumToState,
-  snapEnumToState,
-  resolveAction,
-  isWindowVisible,
-  isWindowMaximized,
-  getWindowStateDescription
-} from '../utils/windowStateMachine.js';
+import { readState, describe, DISPLAY, PLACEMENT } from '../kernel/windowState.js';
 
 /**
- * Hook to manage window state using state machine
- * 
- * @param {object} win - Window object { m, sn, ... }
- * @returns {object} Window state info and helper methods
+ * @param {object} win - a stored window
+ * @returns {{placement: string, display: string, isMaximized: boolean,
+ *            isMinimized: boolean, isTiled: boolean, isVisible: boolean,
+ *            stateDescription: string}}
  */
 export function useWindowState(win) {
-  // Derive current state from window object
-  const displayState = displayEnumToState(win.m);
-  const snapState = snapEnumToState(win.sn);
-
-  // Computed properties
-  const isVisible = isWindowVisible(displayState);
-  const isMaximized = isWindowMaximized(snapState);
-  const isMinimized = displayState === WINDOW_DISPLAY_STATE.MINIMIZED;
-  const isClosed = displayState === WINDOW_DISPLAY_STATE.CLOSED;
-  
-  const stateDescription = getWindowStateDescription(displayState, snapState);
-
-  // Create a method to resolve what action should be taken
-  const resolveUserAction = useMemo(() => {
-    return (userAction) => {
-      return resolveAction(displayState, snapState, userAction);
+  return useMemo(() => {
+    const { placement, display } = readState(win);
+    return {
+      placement,
+      display,
+      isMaximized: display === DISPLAY.FULLSCREEN,
+      isMinimized: display === DISPLAY.MINIMIZED,
+      isTiled: placement === PLACEMENT.TILED,
+      isVisible: display !== DISPLAY.MINIMIZED,
+      stateDescription: describe(win),
     };
-  }, [displayState, snapState]);
-
-  return {
-    // Current state
-    displayState,
-    snapState,
-    
-    // Flags
-    isVisible,
-    isMaximized,
-    isMinimized,
-    isClosed,
-    
-    // Description
-    stateDescription,
-    
-    // Action resolver
-    resolveUserAction,
-    
-    // Quick checks
-    canMinimize: () => displayState === WINDOW_DISPLAY_STATE.VISIBLE,
-    canRestore: () => displayState === WINDOW_DISPLAY_STATE.MINIMIZED,
-    canMaximize: () => displayState === WINDOW_DISPLAY_STATE.VISIBLE || displayState === WINDOW_DISPLAY_STATE.MINIMIZED,
-    canUnmaximize: () => displayState === WINDOW_DISPLAY_STATE.VISIBLE && snapState === WINDOW_SNAP_STATE.FULL,
-    canClose: () => displayState !== WINDOW_DISPLAY_STATE.CLOSED,
-    canSnap: () => displayState === WINDOW_DISPLAY_STATE.VISIBLE || displayState === WINDOW_DISPLAY_STATE.MINIMIZED,
-  };
+  }, [win]);
 }
+
+export default useWindowState;

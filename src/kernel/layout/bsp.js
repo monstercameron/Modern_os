@@ -200,22 +200,36 @@ export function computeBounds(node, rect, gap = GAP) {
       out.set(n.id, {
         x: Math.round(r.x),
         y: Math.round(r.y),
-        w: Math.round(r.w),
-        h: Math.round(r.h),
+        w: Math.max(0, Math.round(r.w)),
+        h: Math.max(0, Math.round(r.h)),
       });
       return;
     }
 
+    /*
+     * The gap comes out of the space before it is divided, and a deep enough
+     * tree runs out of space to take it from: nesting a dozen splits down a
+     * 960px column produced panes with negative height, which React then
+     * rendered as a window with a negative size. Clamping here keeps every
+     * rectangle valid however deep the tree goes — the pane can be tiny, but it
+     * is never nonsense.
+     */
     if (n.dir === 'v') {
-      const usable = r.w - gap;
+      // The gap can never be wider than the space it divides: clamping only the
+      // width left b offset by a full gap it did not have room for, so the pane
+      // started past its parent's right edge. Shrink the gap instead, and the
+      // two children always add back up to exactly what they were given.
+      const g = Math.min(gap, Math.max(0, r.w));
+      const usable = r.w - g;
       const aw = usable * n.ratio;
       walk(n.a, { x: r.x, y: r.y, w: aw, h: r.h });
-      walk(n.b, { x: r.x + aw + gap, y: r.y, w: usable - aw, h: r.h });
+      walk(n.b, { x: r.x + aw + g, y: r.y, w: usable - aw, h: r.h });
     } else {
-      const usable = r.h - gap;
+      const g = Math.min(gap, Math.max(0, r.h));
+      const usable = r.h - g;
       const ah = usable * n.ratio;
       walk(n.a, { x: r.x, y: r.y, w: r.w, h: ah });
-      walk(n.b, { x: r.x, y: r.y + ah + gap, w: r.w, h: usable - ah });
+      walk(n.b, { x: r.x, y: r.y + ah + g, w: r.w, h: usable - ah });
     }
   };
 

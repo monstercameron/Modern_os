@@ -36,17 +36,41 @@ export function useWindowManager() {
    */
   useEffect(() => startFeeds(), []);
 
-  // ---------- keep tiling in step with the viewport ----------
+  /*
+   * The shell measures, the kernel computes.
+   *
+   * The reducer used to read window.innerWidth and getComputedStyle itself,
+   * which made it a function of the browser as well as its arguments. It now
+   * reads both from state; this is the only place that measures them, and a
+   * measurement change retiles every workspace.
+   */
   useEffect(() => {
+    const measure = () => {
+      const raw = getComputedStyle(document.documentElement)
+        .getPropertyValue('--theme-window-gap');
+      const gap = parseFloat(raw);
+      dispatch(actions.setEnv({
+        viewport: { w: window.innerWidth, h: window.innerHeight },
+        gap: Number.isFinite(gap) ? gap : undefined,
+      }));
+    };
+
+    measure();
     let frame = 0;
     const onResize = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => dispatch(actions.retileAll()));
+      frame = requestAnimationFrame(measure);
     };
     window.addEventListener('resize', onResize);
+
+    // The gap is a theme token, so it changes without the window resizing.
+    const observer = new MutationObserver(measure);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'data-theme-name'] });
+
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', onResize);
+      observer.disconnect();
     };
   }, []);
 
