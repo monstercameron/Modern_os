@@ -100,7 +100,9 @@ export function useDispatch() {
 // from the console (or a browser-automation session) without a second module
 // instance, which a dynamic import would create.
 if (import.meta.env?.DEV && typeof globalThis !== 'undefined') {
-  globalThis.__kernel = { store, dispatch, actions: undefined, select: undefined };
+  globalThis.__kernel = { store, dispatch, actions: undefined, select: undefined, keymap: undefined };
   import('./actions.js').then((m) => { globalThis.__kernel.actions = m; });
   import('./selectors.js').then((m) => { globalThis.__kernel.select = m; });
+  // The live keymap instance — a dynamic import would hand back a second copy.
+  import('../services/keymap.js').then((m) => { globalThis.__kernel.keymap = m.default; });
 }

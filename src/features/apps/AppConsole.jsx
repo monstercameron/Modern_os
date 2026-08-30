@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal as TerminalIcon, X, CornerDownLeft } from 'lucide-react';
 import { useMotion } from '../../hooks/useMotion.js';
+import eventBus from '../../utils/eventBus.js';
+import { APP_CONSOLE_OPEN, APP_CONSOLE_ASK } from '../agent/desktopAgent.js';
 
 /**
  * The in-app console.
@@ -50,6 +52,8 @@ export function AppConsole({
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState([]);
   const inputRef = useRef(null);
+  // Lets the event subscription call the latest submit without re-subscribing.
+  const submitRef = useRef(null);
   const scrollRef = useRef(null);
   const motionSettings = useMotion();
 
@@ -86,6 +90,24 @@ export function AppConsole({
     const target = frame || window;
     target.addEventListener('keydown', onKeyDown);
     return () => target.removeEventListener('keydown', onKeyDown);
+  }, [appId]);
+
+  /*
+   * The desktop can open this console, or hand it a question, without the app
+   * knowing who asked — $mod+` opens the focused app's agent, and the global
+   * agent forwards "ask <app> ..." here.
+   */
+  useEffect(() => {
+    const offOpen = eventBus.subscribe(APP_CONSOLE_OPEN, (data) => {
+      if (data?.appId === appId) setOpen(true);
+    });
+    const offAsk = eventBus.subscribe(APP_CONSOLE_ASK, (data) => {
+      if (data?.appId !== appId || !data.text) return;
+      setOpen(true);
+      // Let the panel mount before the question lands in the transcript.
+      setTimeout(() => submitRef.current?.(data.text), 60);
+    });
+    return () => { offOpen(); offAsk(); };
   }, [appId]);
 
   useEffect(() => {
@@ -148,6 +170,8 @@ export function AppConsole({
       setBusy(false);
     }
   }, [busy, say, handler, appId, appTitle, suggestions]);
+
+  useEffect(() => { submitRef.current = submit; }, [submit]);
 
   return (
     <>

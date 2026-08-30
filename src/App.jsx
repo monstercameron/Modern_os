@@ -11,6 +11,7 @@ import { Win } from "./components/Win.jsx";
 import { AppErrorBoundary } from "./components/ErrorBoundary.jsx";
 import { StubApp } from "./apps/StubApp.jsx";
 import { Launcher } from "./features/launcher/Launcher.jsx";
+import { GlobalAgent } from "./features/agent/GlobalAgent.jsx";
 import { useKernel, dispatch, actions, select } from "./kernel/index.js";
 import { migrateLegacyKeys } from "./services/persistence.js";
 import eventBus from "./utils/eventBus.js";
@@ -108,6 +109,9 @@ export default function App() {
         onQuick={openA}
         animatingBadge={animatingBadge}
       />
+
+      {/* The desktop agent floats above every window and the launcher. */}
+      <GlobalAgent />
 
       <div
         className={`absolute bottom-1 right-1 px-2 py-1 text-[10px] z-[1700] ${

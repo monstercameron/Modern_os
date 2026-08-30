@@ -282,10 +282,14 @@ export function createKeymap({ mod = 'alt' } = {}) {
     /*
      * While the caret is in a text field, the field wins. Ctrl+Shift+V, the
      * arrow keys and friends belong to whoever is typing, not to the window
-     * manager. Two exceptions get through: Escape, so an overlay can always be
-     * dismissed, and anything holding Alt, which no text field claims.
+     * manager. Three exceptions get through: Escape, so an overlay can always
+     * be dismissed; anything holding Alt, which no text field claims; and
+     * bindings a modal registered for itself — a modal owns the keyboard while
+     * it is up, including its own close chord, which is otherwise unreachable
+     * once its input takes focus.
      */
-    if (typing && descriptor.key !== 'escape' && !descriptor.alt) return;
+    const modalOwned = binding.scope === SCOPES.MODAL;
+    if (typing && !modalOwned && descriptor.key !== 'escape' && !descriptor.alt) return;
 
     event.preventDefault();
     binding.handler(event);

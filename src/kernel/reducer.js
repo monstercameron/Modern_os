@@ -20,6 +20,13 @@ import {
 } from '../utils/windowStateMachine.js';
 import { ActionTypes as T } from './actions.js';
 import * as bsp from './layout/bsp.js';
+import {
+  ACTION as WA,
+  readState,
+  transition,
+  applyState,
+  participatesInLayout,
+} from './windowState.js';
 
 export const DEFAULT_WORKSPACE_COUNT = 5;
 
@@ -90,11 +97,20 @@ function windowGap() {
 }
 
 /**
- * A window participates in tiling when it is not floating, not minimized and
- * not fullscreen. Fullscreen keeps its place in the tree but stops being laid
- * out, so leaving fullscreen drops it back where it was.
+ * Whether the layout should give this window a rectangle right now. Delegated
+ * to the state machine so there is one definition of "tiled and visible".
  */
-const isTiled = (w) => !w.floating && !w.m && w.sn !== SN.FULL;
+const isTiled = participatesInLayout;
+
+/**
+ * Run a window through the state machine.
+ * Returns the updated window, or null when the machine refuses the action.
+ */
+function step(win, action, extra = {}) {
+  const result = transition(readState(win), action);
+  if (!result.ok) return null;
+  return { ...applyState(win, result), ...extra };
+}
 
 /**
  * Recompute the tree for a workspace and write the resulting rectangles onto
@@ -331,9 +347,7 @@ export function reducer(state, action) {
     case T.WINDOW_MINIMIZE: {
       const target = state.windows.find((w) => w.id === action.id);
       if (!target) return state;
-      const next = mapWindow(state, action.id, (w) =>
-        permits(w, 'minimize') ? { ...w, m: true } : w
-      );
+      const next = mapWindow(state, action.id, (w) => step(w, WA.MINIMIZE) || w);
       // A minimized window releases its share of the tiling area.
       return retile(reconcileActive(next), target.ws);
     }
@@ -341,9 +355,25 @@ export function reducer(state, action) {
     case T.WINDOW_RESTORE: {
       const target = state.windows.find((w) => w.id === action.id);
       if (!target) return state;
-      const next = mapWindow(state, action.id, (w) => ({ ...w, m: false }));
+      // Restore is also the "unhide" path, so it accepts a window that is not
+      // minimized and simply focuses it.
+      const next = mapWindow(state, action.id, (w) => step(w, WA.RESTORE) || w);
       return retile(
         reconcileActive(raise({ ...next, activeId: action.id }, action.id)),
+        target.ws
+      );
+    }
+
+    /** Bring back the most recently minimized window on the current workspace. */
+    case T.WINDOW_RESTORE_LAST: {
+      const candidates = state.windows.filter(
+        (w) => w.m && w.ws === state.workspaces.current
+      );
+      if (candidates.length === 0) return state;
+      const target = candidates[candidates.length - 1];
+      const next = mapWindow(state, target.id, (w) => step(w, WA.RESTORE) || w);
+      return retile(
+        reconcileActive(raise({ ...next, activeId: target.id }, target.id)),
         target.ws
       );
     }
@@ -354,11 +384,13 @@ export function reducer(state, action) {
       if (!target) return state;
       const goingFloating = !target.floating;
 
-      const next = mapWindow(state, action.id, (w) =>
-        goingFloating
-          ? { ...w, floating: true, sn: SN.NONE, b: floatRect(w), prevB: w.b }
-          : { ...w, floating: false, sn: SN.NONE }
-      );
+      const next = mapWindow(state, action.id, (w) => {
+        const moved = step(w, WA.TOGGLE_PLACEMENT);
+        if (!moved) return w;
+        return goingFloating
+          ? { ...moved, sn: SN.NONE, b: floatRect(w), prevB: w.b }
+          : { ...moved, sn: SN.NONE };
+      });
 
       // Leaving the tree frees space; joining it splits the focused window.
       const layouts = goingFloating

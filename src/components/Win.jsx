@@ -470,8 +470,21 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
     >
-      {/* Title bar - full width with controls on right */}
-      <div 
+      {/*
+        Title bar — floating windows only.
+
+        A tiled window has nothing to title-bar about: it cannot be dragged or
+        resized by hand, and its position is the layout's business. Removing the
+        bar gives the app the whole rectangle, which is what a tiling desktop
+        looks like. Floating windows keep the full set, because they are the
+        ones you move, resize and stack.
+
+        Everything the bar offered is still reachable while tiled: Ctrl+Shift+V
+        floats, Ctrl+Shift+X closes, Ctrl+Shift+Down minimizes, and the taskbar
+        entry has the same actions on right-click.
+      */}
+      {win.floating && (
+      <div
         className="absolute top-0 left-0 right-0 z-10 flex items-center h-10"
         onContextMenu={(e) => handleWindowContextMenu(e)}
       >
@@ -591,15 +604,56 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
           )}
         </div>
       </div>
-      
-      {/*
-        Window content, presented as a card that turns over.
+      )}
 
-        While the app is loading the window shows its icon on a tile-coloured
-        face; once it is ready the card flips on the Y axis to reveal the
-        content behind it. Both faces are mounted the whole time and hidden by
-        backface-visibility, so the app has already rendered by the time it
-        comes into view and there is no second pop of layout.
+      {/*
+        Tiled window controls.
+
+        No title bar, but not no controls either: a small strip fades in at the
+        top-right on hover with float, minimize and close. It costs no layout
+        space and stays out of the way, so the app still owns the whole
+        rectangle while the actions remain discoverable by mouse — the keyboard
+        equivalents are $mod+V, $mod+Down and $mod+X.
+      */}
+      {!win.floating && (
+        <div
+          className="absolute top-1 right-1 z-20 flex items-center gap-0.5 transition-opacity"
+          style={{
+            opacity: hv ? 1 : 0,
+            pointerEvents: hv ? 'auto' : 'none',
+            backgroundColor: 'var(--theme-surface-alt)',
+            border: '1px solid var(--theme-border)',
+            borderRadius: 'var(--theme-radius-sm)',
+            transitionDuration: 'var(--motion-fast)',
+          }}
+          data-tiled-controls
+        >
+          {[
+            { key: 'float', label: 'Float this window', icon: <Move size={12} />, run: () => on('toggleFloat') },
+            { key: 'min', label: 'Minimize', icon: <ChevronDown size={12} />, run: () => on('min') },
+            { key: 'close', label: 'Close', icon: <X size={12} />, run: () => on('close') },
+          ].map((b) => (
+            <button
+              key={b.key}
+              title={b.label}
+              aria-label={b.label}
+              data-tiled-action={b.key}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setActive(win.id); b.run(); }}
+              className="px-1.5 py-1 hover:bg-white/10"
+              style={{ color: 'var(--theme-text-muted)' }}
+            >
+              {b.icon}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/*
+        Window content.
+
+        A floating window reserves the top 40px for its title bar; a tiled one
+        has no bar, so the app starts at the very top of the rectangle.
       */}
       <div className="w-full h-full overflow-hidden relative">
         <div className="w-full h-full overflow-auto">{children}</div>

@@ -4,6 +4,11 @@ import { store, dispatch, actions } from '../kernel/index.js';
 import { read, write } from '../services/persistence.js';
 import { APPS } from '../config/apps.js';
 import { SN } from '../utils/constants.js';
+import eventBus from '../utils/eventBus.js';
+import { APP_CONSOLE_OPEN } from '../features/agent/desktopAgent.js';
+
+/** Topic the global agent overlay listens on. */
+export const DESKTOP_AGENT_TOGGLE = 'agent.desktop.toggle';
 
 /**
  * The desktop's key bindings.
@@ -62,6 +67,10 @@ export function useDesktopKeymap() {
       // Ctrl+Shift+M is Chrome's profile switcher; minimize uses Down.
       ['$mod+down', () => { const id = focusedId(); if (id) dispatch(actions.minimizeWindow(id)); },
         { description: 'Minimize focused window', owner: 'desktop' }],
+      // Minimizing a tiled window removes its only on-screen handle, so the way
+      // back needs a key of its own rather than only the taskbar.
+      ['$mod+u', () => dispatch(actions.restoreLastWindow()),
+        { description: 'Unhide the last minimized window', owner: 'desktop' }],
       ['$mod+f', () => { const id = focusedId(); if (id) dispatch(actions.toggleMaximizeWindow(id)); },
         { description: 'Toggle maximize', owner: 'desktop' }],
       ['$mod+v', () => { const id = focusedId(); if (id) dispatch(actions.toggleFloating(id)); },
@@ -86,6 +95,22 @@ export function useDesktopKeymap() {
     bindings.push(
       ['$mod+period', cycle(1), { description: 'Focus next window', owner: 'desktop' }],
       ['$mod+comma', cycle(-1), { description: 'Focus previous window', owner: 'desktop' }],
+    );
+
+    // ---- agents ----
+    bindings.push(
+      // The focused app's own console. `~` on its own does the same when the
+      // caret is not in a field; this chord works even while typing.
+      ['$mod+`', () => {
+        const state = store.getState();
+        const win = state.windows.find((w) => w.id === state.activeId);
+        if (!win) return;
+        eventBus.publish(APP_CONSOLE_OPEN, { appId: win.appId });
+      }, { description: "Open the focused app's agent", owner: 'desktop' }],
+
+      // The desktop-wide agent, which can reach across apps and the kernel.
+      ['$mod+g', () => eventBus.publish(DESKTOP_AGENT_TOGGLE, {}),
+        { description: 'Open the desktop agent', owner: 'desktop' }],
     );
 
     // ---- launcher ----

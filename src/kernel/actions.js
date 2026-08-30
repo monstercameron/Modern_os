@@ -12,6 +12,7 @@ export const ActionTypes = {
   WINDOW_FOCUS: 'window/focus',
   WINDOW_MINIMIZE: 'window/minimize',
   WINDOW_RESTORE: 'window/restore',
+  WINDOW_RESTORE_LAST: 'window/restoreLast',
   WINDOW_MAXIMIZE: 'window/maximize',
   WINDOW_UNMAXIMIZE: 'window/unmaximize',
   WINDOW_TOGGLE_MAXIMIZE: 'window/toggleMaximize',
@@ -54,6 +55,9 @@ export const closeWindow = (id) => ({ type: ActionTypes.WINDOW_CLOSE, id });
 export const focusWindow = (id) => ({ type: ActionTypes.WINDOW_FOCUS, id });
 export const minimizeWindow = (id) => ({ type: ActionTypes.WINDOW_MINIMIZE, id });
 export const restoreWindow = (id) => ({ type: ActionTypes.WINDOW_RESTORE, id });
+
+/** Unhide the most recently minimized window on the current workspace. */
+export const restoreLastWindow = () => ({ type: ActionTypes.WINDOW_RESTORE_LAST });
 export const maximizeWindow = (id) => ({ type: ActionTypes.WINDOW_MAXIMIZE, id });
 export const unmaximizeWindow = (id) => ({ type: ActionTypes.WINDOW_UNMAXIMIZE, id });
 export const toggleMaximizeWindow = (id) => ({ type: ActionTypes.WINDOW_TOGGLE_MAXIMIZE, id });

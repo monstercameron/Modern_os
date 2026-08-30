@@ -6,7 +6,7 @@ import {
   AppFrame, Button, Card, Row, Input, Muted, Tag, SectionTitle, Field, Kbd, Empty,
 } from './AppFrame.jsx';
 import { store } from '../../kernel/index.js';
-import keymap from '../../services/keymap.js';
+import keymap, { MOD_CHOICES } from '../../services/keymap.js';
 
 /* -------------------------------------------------------------- Terminal */
 
@@ -389,7 +389,7 @@ export function AboutApp({ init = {} }) {
         <Card className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
           <Field label="Windows">{state.windows.length}</Field>
           <Field label="Workspaces">{state.workspaces.count}, on {state.workspaces.current}</Field>
-          <Field label="Modifier">{keymap.getMod().split('+').map((m) => m[0].toUpperCase() + m.slice(1)).join('+')}</Field>
+          <Field label="Modifier">{MOD_CHOICES[keymap.getMod()]?.label || keymap.getMod()}</Field>
           <Field label="Built with">React 19 · Vite · Tailwind · Framer Motion</Field>
         </Card>
 

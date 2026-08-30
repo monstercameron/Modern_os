@@ -9,7 +9,7 @@ import { SettingsApp as RawSettingsApp } from '../../apps/SettingsApp.jsx';
 import { TaskManagerApp as RawTaskManagerApp } from '../../apps/TaskManagerApp.jsx';
 import { TileConfiguratorApp as RawTileConfiguratorApp } from '../../apps/TileConfiguratorApp.jsx';
 import { store, dispatch, actions } from '../../kernel/index.js';
-import keymap from '../../services/keymap.js';
+import keymap, { MOD_CHOICES } from '../../services/keymap.js';
 
 export const SettingsApp = withConsole(RawSettingsApp, {
   appId: 'settings',
@@ -23,7 +23,7 @@ export const SettingsApp = withConsole(RawSettingsApp, {
       const theme = raw ? JSON.parse(raw) : null;
 
       if (/modifier|shortcut key|\$mod/.test(q)) {
-        return `The window-manager modifier is ${keymap.getMod().split('+').map((m) => m[0].toUpperCase() + m.slice(1)).join('+')}. ` +
+        return `The window-manager modifier is ${MOD_CHOICES[keymap.getMod()]?.label || keymap.getMod()}. ` +
           'Super is unavailable because Windows takes Meta+digit before the page sees it.';
       }
       if (/theme|colou?r|preset/.test(q) && theme) {
