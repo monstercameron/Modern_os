@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:pages": "vite build --base=/Modern_os/app/ --outDir=docs/app --emptyOutDir",
+    "serve:pages": "vite preview --outDir docs --port 5174 --strictPort"
   },
   "dependencies": {
     "autoprefixer": "^10.4.21",
