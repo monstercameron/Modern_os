@@ -40,6 +40,7 @@ export const ACTION = {
   SNAP: 'snap',
   MOVE: 'move',
   RESIZE: 'resize',
+  RESIZE_TILE: 'resizeTile',
 };
 
 /** Read the machine's view of a stored window object. */
@@ -113,6 +114,17 @@ export function transition({ placement, display }, action) {
     case ACTION.RESIZE:
       if (display === DISPLAY.MINIMIZED) return no('cannot resize a minimized window');
       if (placement === PLACEMENT.TILED) return no('the layout owns a tiled window\'s size');
+      return stay();
+
+    /*
+     * The mirror of RESIZE. A tiled window cannot take bounds of its own, but
+     * the layout holding it can be asked to give it more or less room, which
+     * is a different thing and legal in exactly the opposite cases.
+     */
+    case ACTION.RESIZE_TILE:
+      if (placement === PLACEMENT.FLOATING) return no('a floating window carries its own bounds');
+      if (display === DISPLAY.MINIMIZED) return no('cannot resize a minimized window');
+      if (display === DISPLAY.FULLSCREEN) return no('leave fullscreen before resizing the pane');
       return stay();
 
     default:

@@ -472,6 +472,24 @@ export function reducer(state, action) {
       );
     }
 
+    /*
+     * Resizing a tiled window is a change to the layout, not to the window:
+     * the tree moves a divider and retile() writes the new rectangles onto
+     * both neighbours. The machine refuses this for floating, minimized and
+     * fullscreen windows, and a refusal leaves the tree untouched.
+     */
+    case T.WINDOW_RESIZE_TILE: {
+      const target = state.windows.find((w) => w.id === action.id);
+      if (!target || !step(target, WA.RESIZE_TILE)) return state;
+      const current = state.layouts[target.ws] || null;
+      const tree = bsp.resizeDirection(current, action.id, action.direction);
+      if (tree === current) return state;
+      return retile(
+        { ...state, layouts: { ...state.layouts, [target.ws]: tree } },
+        target.ws
+      );
+    }
+
     case T.WINDOW_SNAP_QUAD: {
       const target = state.windows.find((w) => w.id === action.id);
       if (!target) return state;

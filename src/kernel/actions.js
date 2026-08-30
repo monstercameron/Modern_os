@@ -17,6 +17,7 @@ export const ActionTypes = {
   WINDOW_UNMAXIMIZE: 'window/unmaximize',
   WINDOW_TOGGLE_MAXIMIZE: 'window/toggleMaximize',
   WINDOW_SNAP: 'window/snap',
+  WINDOW_RESIZE_TILE: 'window/resizeTile',
   WINDOW_SNAP_QUAD: 'window/snapQuad',
   WINDOW_SET_BOUNDS: 'window/setBounds',
   WINDOW_MOVE_TO: 'window/moveTo',
@@ -65,6 +66,9 @@ export const toggleMaximizeWindow = (id) => ({ type: ActionTypes.WINDOW_TOGGLE_M
 /** @param {string} snapType - one of SN.LEFT | RIGHT | TOP | BOTTOM | FULL */
 export const snapWindow = (id, snapType) => ({ type: ActionTypes.WINDOW_SNAP, id, snapType });
 export const snapWindowQuad = (id, quadIndex) => ({ type: ActionTypes.WINDOW_SNAP_QUAD, id, quadIndex });
+
+/** Move the divider a tiled window shares. direction is left|right|up|down. */
+export const resizeTile = (id, direction) => ({ type: ActionTypes.WINDOW_RESIZE_TILE, id, direction });
 
 /** Explicit bounds, used by snap zones and by resize. */
 export const setWindowBounds = (id, bounds, { snapped = false } = {}) => ({

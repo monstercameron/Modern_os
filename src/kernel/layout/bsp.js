@@ -99,6 +99,66 @@ export function resize(tree, id, ratio) {
 }
 
 /**
+ * Move the divider a window shares along one axis.
+ *
+ * Left/Right change the pane's width and Up/Down its height -- i3's semantics,
+ * where the direction names the dimension to grow rather than the way the
+ * window travels. The sign depends on which side of the split the window sits
+ * on: the `a` branch grows as the ratio rises, the `b` branch as it falls, so
+ * the same key produces the same visible result from either side.
+ *
+ * Splits on the other axis are skipped, so pressing Right from inside a stack
+ * of horizontal splits walks up to the nearest vertical one instead of doing
+ * nothing.
+ *
+ * @param {object|null} tree
+ * @param {string} id
+ * @param {'left'|'right'|'up'|'down'} direction
+ * @param {number} step - fraction of the split to move
+ * @returns {object|null} the tree, returned unchanged when there is no divider
+ *                        to move or it is already at its limit
+ */
+export function resizeDirection(tree, id, direction, step = 0.05) {
+  const axis = direction === 'left' || direction === 'right' ? 'v' : 'h';
+  const grow = direction === 'right' || direction === 'down';
+
+  // Path from the root down to the leaf, so the *nearest* matching split wins.
+  const path = [];
+  const find = (node, trail) => {
+    if (!node) return false;
+    if (node.type === 'leaf') {
+      if (node.id !== id) return false;
+      path.push(...trail);
+      return true;
+    }
+    return (
+      find(node.a, [...trail, { node, branch: 'a' }]) ||
+      find(node.b, [...trail, { node, branch: 'b' }])
+    );
+  };
+  if (!find(tree, [])) return tree;
+
+  const hit = [...path].reverse().find((entry) => entry.node.dir === axis);
+  if (!hit) return tree;
+
+  const delta = (hit.branch === 'a' ? 1 : -1) * (grow ? step : -step);
+  const ratio = Math.min(0.85, Math.max(0.15, hit.node.ratio + delta));
+  if (ratio === hit.node.ratio) return tree;
+
+  // Rebuild only the spine down to the split that changed; the rest is shared,
+  // so React sees new objects exactly where something actually moved.
+  const rebuild = (node, depth) => {
+    if (node === hit.node) return { ...node, ratio };
+    const down = path[depth];
+    if (!down) return node;
+    return down.branch === 'a'
+      ? { ...node, a: rebuild(node.a, depth + 1) }
+      : { ...node, b: rebuild(node.b, depth + 1) };
+  };
+  return rebuild(tree, 0);
+}
+
+/**
  * Derive a rectangle for every leaf.
  *
  * @param {object|null} node

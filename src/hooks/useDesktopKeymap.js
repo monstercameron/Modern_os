@@ -78,14 +78,35 @@ export function useDesktopKeymap() {
         { description: 'Toggle maximize', owner: 'desktop' }],
       ['$mod+v', () => { const id = focusedId(); if (id) dispatch(actions.toggleFloating(id)); },
         { description: 'Toggle tiling / floating', owner: 'desktop' }],
-      ['$mod+left', () => { const id = focusedId(); if (id) dispatch(actions.snapWindow(id, SN.LEFT)); },
-        { description: 'Snap window left', owner: 'desktop' }],
-      ['$mod+right', () => { const id = focusedId(); if (id) dispatch(actions.snapWindow(id, SN.RIGHT)); },
-        { description: 'Snap window right', owner: 'desktop' }],
-      ['$mod+up', () => { const id = focusedId(); if (id) dispatch(actions.snapWindow(id, SN.TOP)); },
-        { description: 'Snap window up', owner: 'desktop' }],
-      ['$mod+down', () => { const id = focusedId(); if (id) dispatch(actions.snapWindow(id, SN.BOTTOM)); },
-        { description: 'Snap window down', owner: 'desktop' }],
+    );
+
+    /*
+     * The arrows are placement-aware.
+     *
+     * A floating window snaps to a half of the screen. A tiled one moves the
+     * divider it shares with its neighbour, which is what resizing means
+     * inside a layout -- snapping it would have to eject it from the tree to
+     * give it those bounds, so pressing an arrow silently turned a tiled
+     * window into a floating one. The arrows arrange what you have; $mod+V is
+     * the key that changes how a window is managed.
+     */
+    const arrow = (direction, snapType) => () => {
+      const state = store.getState();
+      const win = state.windows.find((w) => w.id === state.activeId);
+      if (!win) return;
+      if (win.floating) dispatch(actions.snapWindow(win.id, snapType));
+      else dispatch(actions.resizeTile(win.id, direction));
+    };
+
+    bindings.push(
+      ['$mod+left', arrow('left', SN.LEFT),
+        { description: 'Narrower pane, or snap left', owner: 'desktop' }],
+      ['$mod+right', arrow('right', SN.RIGHT),
+        { description: 'Wider pane, or snap right', owner: 'desktop' }],
+      ['$mod+up', arrow('up', SN.TOP),
+        { description: 'Shorter pane, or snap up', owner: 'desktop' }],
+      ['$mod+down', arrow('down', SN.BOTTOM),
+        { description: 'Taller pane, or snap down', owner: 'desktop' }],
     );
 
     // ---- cycle focus (Ctrl+Shift+Tab belongs to the browser) ----
