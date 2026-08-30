@@ -10,13 +10,14 @@ import { SN } from '../utils/constants.js';
  *
  * All of them live here as data so a shortcuts UI can render and rebind them
  * later without touching component code. "$mod" is the window-manager modifier,
- * which defaults to Alt because Windows intercepts Meta+digit before a browser
- * tab ever sees it.
+ * which defaults to Ctrl+Shift: a browser tab never receives Super+digit,
+ * because Windows binds it to taskbar activation first.
  */
 export function useDesktopKeymap() {
   useEffect(() => {
     // Restore the user's chosen modifier before anything binds against it.
     const savedMod = read('keymapMod', null);
+    // Ctrl+Shift is the default; see the collision notes below.
     if (savedMod) keymap.setMod(savedMod);
 
     const detach = keymap.attach(window);
@@ -24,7 +25,19 @@ export function useDesktopKeymap() {
 
     const focusedId = () => store.getState().activeId;
 
-    // ---- workspaces ----
+    /*
+     * $mod is Ctrl+Shift. Two consequences shape the bindings below:
+     *
+     *   1. "$mod+shift+N" would collapse into "$mod+N", so moving a window to
+     *      a workspace uses Alt as the third modifier instead.
+     *   2. Ctrl+Shift is crowded with browser shortcuts. Everything here is
+     *      checked against RESERVED_CHORDS in the keymap service, which warns
+     *      in dev if a binding would never fire. Deliberately avoided:
+     *      N T W Q P O B D M A E (browser/window), I J C (devtools),
+     *      R and Delete (reload, clear data), and Tab (tab cycling).
+     */
+
+    // ---- workspaces: Ctrl+Shift+1..5, Ctrl+Shift+Alt+1..5 to move ----
     for (let n = 1; n <= 9; n += 1) {
       bindings.push([
         `$mod+${n}`,
@@ -32,7 +45,7 @@ export function useDesktopKeymap() {
         { description: `Switch to workspace ${n}`, owner: 'desktop' },
       ]);
       bindings.push([
-        `$mod+shift+${n}`,
+        `$mod+alt+${n}`,
         () => {
           const id = focusedId();
           if (id) dispatch(actions.moveWindowToWorkspace(id, n));
@@ -43,9 +56,11 @@ export function useDesktopKeymap() {
 
     // ---- windows ----
     bindings.push(
-      ['$mod+q', () => { const id = focusedId(); if (id) dispatch(actions.closeWindow(id)); },
+      // Ctrl+Shift+Q is the browser's on some platforms, so close uses X.
+      ['$mod+x', () => { const id = focusedId(); if (id) dispatch(actions.closeWindow(id)); },
         { description: 'Close focused window', owner: 'desktop' }],
-      ['$mod+m', () => { const id = focusedId(); if (id) dispatch(actions.minimizeWindow(id)); },
+      // Ctrl+Shift+M is Chrome's profile switcher; minimize uses Down.
+      ['$mod+down', () => { const id = focusedId(); if (id) dispatch(actions.minimizeWindow(id)); },
         { description: 'Minimize focused window', owner: 'desktop' }],
       ['$mod+f', () => { const id = focusedId(); if (id) dispatch(actions.toggleMaximizeWindow(id)); },
         { description: 'Toggle maximize', owner: 'desktop' }],
@@ -57,23 +72,21 @@ export function useDesktopKeymap() {
         { description: 'Snap window right', owner: 'desktop' }],
       ['$mod+up', () => { const id = focusedId(); if (id) dispatch(actions.snapWindow(id, SN.TOP)); },
         { description: 'Snap window up', owner: 'desktop' }],
-      ['$mod+down', () => { const id = focusedId(); if (id) dispatch(actions.snapWindow(id, SN.BOTTOM)); },
-        { description: 'Snap window down', owner: 'desktop' }],
     );
 
-    // ---- cycle focus ----
-    bindings.push([
-      '$mod+tab',
-      () => {
-        const state = store.getState();
-        const onScreen = state.windows.filter((w) => w.ws === state.workspaces.current && !w.m);
-        if (onScreen.length < 2) return;
-        const index = onScreen.findIndex((w) => w.id === state.activeId);
-        const next = onScreen[(index + 1) % onScreen.length];
-        dispatch(actions.focusWindow(next.id));
-      },
-      { description: 'Focus next window', owner: 'desktop' },
-    ]);
+    // ---- cycle focus (Ctrl+Shift+Tab belongs to the browser) ----
+    const cycle = (step) => () => {
+      const state = store.getState();
+      const onScreen = state.windows.filter((w) => w.ws === state.workspaces.current && !w.m);
+      if (onScreen.length < 2) return;
+      const index = onScreen.findIndex((w) => w.id === state.activeId);
+      const next = onScreen[(index + step + onScreen.length) % onScreen.length];
+      dispatch(actions.focusWindow(next.id));
+    };
+    bindings.push(
+      ['$mod+period', cycle(1), { description: 'Focus next window', owner: 'desktop' }],
+      ['$mod+comma', cycle(-1), { description: 'Focus previous window', owner: 'desktop' }],
+    );
 
     // ---- launcher ----
     bindings.push(

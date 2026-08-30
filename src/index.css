@@ -129,11 +129,23 @@
   border-radius: var(--theme-radius-sm);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+/*
+ * Motion level. The theme engine stamps data-motion on the root; "none" stops
+ * everything, including anything framer-motion drives through inline styles.
+ * The OS preference is folded into the level by resolveMotion(), so it is
+ * honoured without a separate media query fighting the theme.
+ */
+:root[data-motion='none'] *,
+:root[data-motion='none'] *::before,
+:root[data-motion='none'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* "reduced" keeps position and opacity changes but drops the flourishes. */
+:root[data-motion='reduced'] [data-tile-gloss],
+:root[data-motion='reduced'] [data-tile-shine] {
+  display: none !important;
 }

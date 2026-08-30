@@ -5,17 +5,39 @@
  * feature modules and resolved against a scope stack so an open overlay can
  * shadow desktop bindings without every component growing its own listener.
  *
- * Chords are written as "$mod+shift+1". "$mod" is the window-manager modifier,
- * configurable because Windows intercepts Meta+digit before the page sees it —
- * Alt is the default that actually reaches a browser tab.
+ * Chords are written as "$mod+1". "$mod" is the window-manager modifier,
+ * configurable because a browser tab cannot use Super: Windows intercepts
+ * Meta+digit before the page sees it. The default is Ctrl+Shift.
  */
 
 export const MOD_CHOICES = {
+  'control+shift': { token: 'control+shift', label: 'Ctrl+Shift' },
   alt: { token: 'alt', label: 'Alt' },
-  meta: { token: 'meta', label: 'Super' },
-  control: { token: 'control', label: 'Ctrl' },
   'control+alt': { token: 'control+alt', label: 'Ctrl+Alt' },
+  control: { token: 'control', label: 'Ctrl' },
+  meta: { token: 'meta', label: 'Super' },
 };
+
+/**
+ * Chords the browser or OS takes before the page sees them. Binding these is
+ * not an error — the handler simply never runs — so the keymap warns instead
+ * of failing, and the desktop's own bindings avoid the list entirely.
+ *
+ * Meta+digit is here because Windows binds it to taskbar activation, which is
+ * why Super is not the default window-manager modifier.
+ */
+export const RESERVED_CHORDS = new Set([
+  // Chrome / Edge window and tab management
+  'ctrl+shift+n', 'ctrl+shift+t', 'ctrl+shift+w', 'ctrl+shift+q',
+  'ctrl+shift+p', 'ctrl+shift+o', 'ctrl+shift+b', 'ctrl+shift+d',
+  'ctrl+shift+m', 'ctrl+shift+a', 'ctrl+shift+e',
+  // Developer tools
+  'ctrl+shift+i', 'ctrl+shift+j', 'ctrl+shift+c',
+  // Reload and clear browsing data
+  'ctrl+shift+r', 'ctrl+shift+delete',
+  // Tab cycling
+  'ctrl+shift+tab',
+]);
 
 /** Scopes, highest priority first. A binding only fires in an active scope. */
 export const SCOPES = {
@@ -41,6 +63,13 @@ function normalizeKey(key) {
     arrowdown: 'down',
     arrowleft: 'left',
     arrowright: 'right',
+    period: '.',
+    comma: ',',
+    slash: '/',
+    backslash: '\\',
+    backquote: '`',
+    minus: '-',
+    equal: '=',
   };
   return aliases[k] || k;
 }
@@ -92,17 +121,43 @@ export function descriptorId(d) {
   ].filter(Boolean).join('+');
 }
 
+/**
+ * Physical keys whose event.key changes when Shift is held. Because the
+ * window-manager modifier includes Shift, these have to be read from
+ * event.code or "Ctrl+Shift+1" would arrive as "!" and "Ctrl+Shift+." as ">".
+ */
+const CODE_KEYS = {
+  Period: '.',
+  Comma: ',',
+  Slash: '/',
+  Backslash: '\\',
+  Backquote: '`',
+  Minus: '-',
+  Equal: '=',
+  Semicolon: ';',
+  Quote: "'",
+  BracketLeft: '[',
+  BracketRight: ']',
+};
+
 /** Describe a live KeyboardEvent in the same terms as a parsed chord. */
 export function eventDescriptor(event) {
-  const key = normalizeKey(event.key);
-  // Digits are read from event.code so Shift+1 stays "1" rather than "!".
-  const codeDigit = /^Digit(\d)$/.exec(event.code || '');
+  const code = event.code || '';
+  const digit = /^Digit(\d)$/.exec(code);
+  const letter = /^Key([A-Z])$/.exec(code);
+
+  let key;
+  if (digit) key = digit[1];
+  else if (letter) key = letter[1].toLowerCase();
+  else if (CODE_KEYS[code]) key = CODE_KEYS[code];
+  else key = normalizeKey(event.key);
+
   return {
     ctrl: event.ctrlKey,
     alt: event.altKey,
     shift: event.shiftKey,
     meta: event.metaKey,
-    key: codeDigit ? codeDigit[1] : key,
+    key,
   };
 }
 
@@ -133,6 +188,12 @@ export function createKeymap({ mod = 'alt' } = {}) {
         console.warn(
           `[keymap] "${chord}" is already bound in scope "${scope}" by ${clash.owner || 'unknown'}; ` +
           `${owner || 'a new binding'} will take precedence.`
+        );
+      }
+      if (RESERVED_CHORDS.has(id)) {
+        console.warn(
+          `[keymap] "${chord}" resolves to "${id}", which the browser handles ` +
+          `before the page sees it. This binding will not fire.`
         );
       }
     }
@@ -178,11 +239,17 @@ export function createKeymap({ mod = 'alt' } = {}) {
     return () => tapListeners.delete(listener);
   }
 
+  /**
+   * Only a single-key modifier has a meaningful "tap on its own" gesture.
+   * With a compound modifier like Ctrl+Shift there is no unambiguous tap, so
+   * the launcher is reached through its explicit chord instead.
+   */
   const isModKey = (event) => {
-    const primary = currentMod.split('+')[0];
-    if (primary === 'alt') return event.key === 'Alt';
-    if (primary === 'meta') return event.key === 'Meta';
-    if (primary === 'control') return event.key === 'Control';
+    const parts = currentMod.split('+');
+    if (parts.length !== 1) return false;
+    if (parts[0] === 'alt') return event.key === 'Alt';
+    if (parts[0] === 'meta') return event.key === 'Meta';
+    if (parts[0] === 'control') return event.key === 'Control';
     return false;
   };
 
@@ -207,13 +274,18 @@ export function createKeymap({ mod = 'alt' } = {}) {
 
     const descriptor = eventDescriptor(event);
     const hasModifier = descriptor.ctrl || descriptor.alt || descriptor.meta;
-    if (!hasModifier && isTypingTarget(event.target)) return;
+    const typing = isTypingTarget(event.target);
 
     const binding = resolve(descriptorId(descriptor));
     if (!binding) return;
 
-    // A plain-key binding (Escape) still yields to a focused text field.
-    if (!hasModifier && isTypingTarget(event.target)) return;
+    /*
+     * While the caret is in a text field, the field wins. Ctrl+Shift+V, the
+     * arrow keys and friends belong to whoever is typing, not to the window
+     * manager. Two exceptions get through: Escape, so an overlay can always be
+     * dismissed, and anything holding Alt, which no text field claims.
+     */
+    if (typing && descriptor.key !== 'escape' && !descriptor.alt) return;
 
     event.preventDefault();
     binding.handler(event);
@@ -276,6 +348,6 @@ export function createKeymap({ mod = 'alt' } = {}) {
 }
 
 /** The desktop's keymap. */
-export const keymap = createKeymap({ mod: 'alt' });
+export const keymap = createKeymap({ mod: 'control+shift' });
 
 export default keymap;

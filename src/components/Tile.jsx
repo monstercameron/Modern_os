@@ -1,10 +1,11 @@
 import React, { useState, memo, useCallback, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useContextMenu } from "../hooks/useContextMenu.js";
 import { ContextMenu } from "./ContextMenu.jsx";
 import { CONTEXT_TYPES, MENU_ACTIONS } from "../utils/contextMenuStateMachine.js";
 import eventBus, { TOPICS } from "../utils/eventBus.js";
 import { TileContent } from "../features/tiles/content/index.jsx";
+import { useMotion } from "../hooks/useMotion.js";
 
 const SPRING = { type: 'spring', stiffness: 400, damping: 30, mass: 0.8 };
 
@@ -29,6 +30,47 @@ export const Tile = memo(function Tile({
   const [longPressed, setLongPressed] = useState(false);
   const longPressTimeout = useRef(null);
   const tileRef = useRef(null);
+  const motionSettings = useMotion();
+  const tiltEnabled = motionSettings.allows('tileHover');
+
+  /*
+   * Tilt toward the pointer. Two motion values track where the pointer is
+   * inside the tile, normalized to -0.5..0.5, and everything else — the two
+   * rotations and the gloss sweep — derives from them, so the effect stays a
+   * single source of truth and costs one transform per frame.
+   */
+  const px = useMotionValue(0);
+  const py = useMotionValue(0);
+  const springCfg = { stiffness: 260, damping: 22, mass: 0.5 };
+  const sx = useSpring(px, springCfg);
+  const sy = useSpring(py, springCfg);
+
+  const MAX_TILT = 8; // degrees
+  const rotateY = useTransform(sx, [-0.5, 0.5], [-MAX_TILT, MAX_TILT]);
+  const rotateX = useTransform(sy, [-0.5, 0.5], [MAX_TILT, -MAX_TILT]);
+
+  // The gloss is a wide highlight that slides opposite the tilt, the way a
+  // sheen moves across a card held up to a light.
+  const glossX = useTransform(sx, [-0.5, 0.5], ['130%', '-30%']);
+  const glossY = useTransform(sy, [-0.5, 0.5], ['120%', '-20%']);
+  const glossOpacity = useTransform(
+    [sx, sy],
+    ([x, y]) => 0.18 + Math.min(0.28, (Math.abs(x) + Math.abs(y)) * 0.45)
+  );
+
+  const handlePointerMove = useCallback((e) => {
+    if (!tiltEnabled) return;
+    const el = tileRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    px.set((e.clientX - r.left) / r.width - 0.5);
+    py.set((e.clientY - r.top) / r.height - 0.5);
+  }, [tiltEnabled, px, py]);
+
+  const resetTilt = useCallback(() => {
+    px.set(0);
+    py.set(0);
+  }, [px, py]);
 
   const {
     contextMenuState: tileContextMenu,
@@ -100,29 +142,63 @@ export const Tile = memo(function Tile({
       onContextMenu={(e) => handleTileContextMenu(e)}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
+      onPointerMove={handlePointerMove}
       onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-      whileHover={{ scale: 1.03 }}
-      transition={SPRING}
-      className={`relative ${app.size} ${app.color} overflow-hidden shadow-md border border-black/20 p-3 flex flex-col text-left text-white cursor-pointer`}
+      onHoverEnd={() => { setHovered(false); resetTilt(); }}
+      whileHover={tiltEnabled ? { scale: 1.03 } : undefined}
+      transition={motionSettings.spring('fast')}
+      style={tiltEnabled ? {
+        rotateX,
+        rotateY,
+        transformPerspective: 700,
+        transformStyle: 'preserve-3d',
+      } : undefined}
+      className={`relative ${app.size} ${app.color} overflow-hidden p-3 flex flex-col text-left text-white cursor-pointer border border-black/20`}
     >
-      <motion.span
-        className="pointer-events-none absolute inset-y-0 -right-1/3 w-1/3 bg-gradient-to-l from-white/0 via-white/40 to-white/0"
-        initial={{ x: "120%" }}
-        animate={{ x: hovered ? "-220%" : "120%" }}
-        transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.5 }}
-      />
+      {/* Specular gloss that follows the tilt. */}
+      {tiltEnabled && hovered && (
+        <motion.span
+          data-tile-gloss
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-1/4 z-[1]"
+          style={{
+            x: glossX,
+            y: glossY,
+            opacity: glossOpacity,
+            background:
+              'radial-gradient(closest-side, rgba(255,255,255,.55), rgba(255,255,255,.12) 55%, rgba(255,255,255,0) 75%)',
+          }}
+        />
+      )}
 
-      <TileContent
-        app={app}
-        Icon={app.icon}
-        badge={badge}
-        hovered={hovered}
-        badgePulse={animatingBadge}
-        playing={playing}
-        setPlaying={setPlaying}
-        onQuick={onQuick}
-      />
+      {/* The original sweep, kept for the non-tilt path. */}
+      {!tiltEnabled && (
+        <motion.span
+          data-tile-shine
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 -right-1/3 w-1/3 bg-gradient-to-l from-white/0 via-white/40 to-white/0"
+          initial={{ x: "120%" }}
+          animate={{ x: hovered ? "-220%" : "120%" }}
+          transition={motionSettings.spring('fast')}
+        />
+      )}
+
+      {/* Content sits above the tile face so the tilt reads as depth. */}
+      <div
+        className="relative z-[2] flex flex-col h-full"
+        style={tiltEnabled ? { transform: 'translateZ(18px)' } : undefined}
+      >
+        <TileContent
+          app={app}
+          Icon={app.icon}
+          badge={badge}
+          hovered={hovered}
+          badgePulse={animatingBadge}
+          playing={playing}
+          setPlaying={setPlaying}
+          onQuick={onQuick}
+        />
+      </div>
 
       {isEditMode && (
         <motion.div

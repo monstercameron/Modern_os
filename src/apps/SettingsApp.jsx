@@ -40,7 +40,7 @@ function RangeSetting({ label, value, min, max, onChange, hint }) {
 }
 
 export function SettingsApp() {
-  const { theme, presets, shadowLevels, setTheme, updateTheme, setColor, toggleLightDark, resetTheme, isLight } = useTheme();
+  const { theme, presets, shadowLevels, motionLevels, motionEffects, setTheme, updateTheme, setColor, toggleLightDark, resetTheme, isLight } = useTheme();
   const focusFollowsMouse = useKernel(select.focusFollowsMouse);
   const { settings, updateSetting, resetSettings, resetSection, exportSettings, importSettings } = useSettings();
   const [activeSection, setActiveSection] = useState("Personalization");
@@ -202,6 +202,86 @@ export function SettingsApp() {
                         >
                           {level}
                         </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-medium mb-3">Motion</h3>
+                <p className="text-xs text-slate-500 mb-3">
+                  Your system&rsquo;s reduce-motion setting is a floor: if it is on, Full behaves as Reduced.
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-sm font-medium mb-2">Level</div>
+                    <div className="flex gap-2 flex-wrap">
+                      {motionLevels.map((level) => (
+                        <button
+                          key={level}
+                          data-motion-level={level}
+                          onClick={() => updateTheme({ motion: { ...theme.motion, level } })}
+                          className="px-3 py-1.5 text-sm border rounded capitalize transition-colors"
+                          style={{
+                            borderColor: theme.motion.level === level ? 'var(--theme-accent)' : 'var(--theme-border)',
+                            backgroundColor: theme.motion.level === level ? 'var(--theme-accent)' : 'transparent',
+                            color: theme.motion.level === level ? 'var(--theme-accent-text)' : 'var(--theme-text)',
+                          }}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-2">
+                      {theme.motion.level === 'full' && 'Everything animates, including tile tilt and gloss.'}
+                      {theme.motion.level === 'reduced' && 'Movement and fades only. No tilt, gloss or flourish.'}
+                      {theme.motion.level === 'none' && 'Nothing animates. Every change is instant.'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">Speed</span>
+                      <span className="text-xs text-slate-500 tabular-nums">
+                        {theme.motion.speed.toFixed(2)}&times;
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.25}
+                      max={3}
+                      step={0.25}
+                      value={theme.motion.speed}
+                      aria-label="Animation speed"
+                      disabled={theme.motion.level === 'none'}
+                      onChange={(e) => updateTheme({ motion: { ...theme.motion, speed: Number(e.target.value) } })}
+                      className="w-full"
+                    />
+                    <div className="text-xs text-slate-500 mt-1">
+                      Lower is quicker. 1&times; is the default pace.
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm font-medium mb-2">Individual effects</div>
+                    <div className="space-y-2">
+                      {Object.entries(motionEffects).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            data-motion-effect={key}
+                            checked={theme.motion.effects[key] !== false}
+                            disabled={theme.motion.level === 'none'}
+                            onChange={(e) => updateTheme({
+                              motion: {
+                                ...theme.motion,
+                                effects: { ...theme.motion.effects, [key]: e.target.checked },
+                              },
+                            })}
+                          />
+                          <span className="text-sm">{label}</span>
+                        </label>
                       ))}
                     </div>
                   </div>

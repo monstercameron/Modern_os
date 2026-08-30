@@ -5,6 +5,8 @@ import {
   applyTheme,
   normalizeTheme,
   SHADOW_LEVELS,
+  MOTION_LEVELS,
+  MOTION_EFFECTS,
 } from './services/theme.js';
 import { read, write } from './services/persistence.js';
 import { dispatch, actions } from './kernel/index.js';
@@ -93,6 +95,8 @@ export function ThemeProvider({ children }) {
     currentTheme: theme.mode,
     presets: PRESETS,
     shadowLevels: SHADOW_LEVELS,
+    motionLevels: MOTION_LEVELS,
+    motionEffects: MOTION_EFFECTS,
 
     setTheme,
     updateTheme,

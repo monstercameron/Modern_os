@@ -11,8 +11,29 @@
  */
 
 /** @typedef {'none'|'soft'|'medium'|'strong'} ShadowLevel */
+/** @typedef {'full'|'reduced'|'none'} MotionLevel */
 
 export const SHADOW_LEVELS = ['none', 'soft', 'medium', 'strong'];
+
+/**
+ * How much movement the desktop is allowed.
+ * - full     everything animates
+ * - reduced  position and opacity only; no scale, tilt, gloss or flourish
+ * - none     instant, nothing animates
+ */
+export const MOTION_LEVELS = ['full', 'reduced', 'none'];
+
+/** Individual effects that can be switched off without dropping a whole level. */
+export const MOTION_EFFECTS = {
+  windowTransitions: 'Window movement and resize',
+  launcher: 'Start screen open and close',
+  tileHover: 'Tile tilt and gloss on hover',
+  tileContent: 'Live tile content changes',
+  badges: 'Badge pulses',
+};
+
+/** Base durations in ms at speed 1. Everything else scales off these. */
+const BASE_DURATION = { instant: 90, fast: 160, normal: 240, slow: 380 };
 
 const SHADOWS = {
   none: 'none',
@@ -42,6 +63,19 @@ export const DEFAULT_THEME = {
   shadow: 'medium',
   tileGap: 8,
   windowGap: 8,
+  motion: {
+    /** @type {MotionLevel} */
+    level: 'full',
+    /** Multiplier on every duration. 0.5 is twice as fast, 2 is half speed. */
+    speed: 1,
+    effects: {
+      windowTransitions: true,
+      launcher: true,
+      tileHover: true,
+      tileContent: true,
+      badges: true,
+    },
+  },
 };
 
 /** Built-in themes. `custom` is produced by editing any of these. */
@@ -187,10 +221,86 @@ const kebab = (s) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 /** Fill in anything a partial theme leaves out. */
 export function normalizeTheme(theme) {
   const base = PRESETS[theme?.mode === 'light' ? 'light' : 'dark'];
+  const motion = { ...DEFAULT_THEME.motion, ...(base.motion || {}), ...(theme?.motion || {}) };
   return {
     ...base,
     ...theme,
     colors: { ...base.colors, ...(theme?.colors || {}) },
+    motion: {
+      ...motion,
+      level: MOTION_LEVELS.includes(motion.level) ? motion.level : 'full',
+      speed: Math.min(3, Math.max(0.25, Number(motion.speed) || 1)),
+      effects: {
+        ...DEFAULT_THEME.motion.effects,
+        ...(base.motion?.effects || {}),
+        ...(theme?.motion?.effects || {}),
+      },
+    },
+  };
+}
+
+/**
+ * Resolve the motion settings into something components can act on.
+ * The OS-level "reduce motion" preference is a floor: a user who asked their
+ * system for less movement gets it regardless of the theme.
+ */
+export function resolveMotion(theme, { respectSystem = true } = {}) {
+  const m = normalizeTheme(theme).motion;
+  const systemReduced =
+    respectSystem &&
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const level = systemReduced && m.level === 'full' ? 'reduced' : m.level;
+  const speed = level === 'none' ? 0 : m.speed;
+
+  const scale = (ms) => (level === 'none' ? 0 : Math.round(ms * m.speed));
+
+  return {
+    level,
+    speed,
+    systemReduced,
+    /** Nothing moves at all. */
+    disabled: level === 'none',
+    /** Decorative movement (scale, tilt, gloss, flourish) is off. */
+    plain: level !== 'full',
+    effects: m.effects,
+    duration: {
+      instant: scale(BASE_DURATION.instant),
+      fast: scale(BASE_DURATION.fast),
+      normal: scale(BASE_DURATION.normal),
+      slow: scale(BASE_DURATION.slow),
+    },
+    /** Is this specific effect allowed right now? */
+    allows(effect) {
+      if (level === 'none') return false;
+      if (m.effects[effect] === false) return false;
+      // Decorative effects are the ones "reduced" drops.
+      if (level === 'reduced' && (effect === 'tileHover' || effect === 'tileContent')) return false;
+      return true;
+    },
+    /**
+     * A framer-motion transition honouring the current settings.
+     * @param {'instant'|'fast'|'normal'|'slow'} speedName
+     */
+    spring(speedName = 'normal') {
+      if (level === 'none') return { duration: 0 };
+      const ms = scale(BASE_DURATION[speedName] ?? BASE_DURATION.normal);
+      return {
+        type: 'spring',
+        stiffness: Math.round(400 / m.speed),
+        damping: 30,
+        mass: 0.8,
+        // Keeps a hard cap so a slow speed cannot feel broken.
+        restDelta: 0.5,
+        duration: ms / 1000,
+      };
+    },
+    tween(speedName = 'normal') {
+      const ms = scale(BASE_DURATION[speedName] ?? BASE_DURATION.normal);
+      return { duration: ms / 1000, ease: 'easeOut' };
+    },
   };
 }
 
@@ -239,6 +349,15 @@ export function themeToCssVars(input) {
   vars['--theme-shadow'] = SHADOWS[t.shadow] ?? SHADOWS.medium;
   vars['--theme-shadow-level'] = t.shadow;
 
+  // Motion. CSS transitions read these; framer-motion reads resolveMotion().
+  const motion = resolveMotion(t);
+  vars['--motion-level'] = motion.level;
+  vars['--motion-speed'] = String(motion.speed);
+  vars['--motion-instant'] = `${motion.duration.instant}ms`;
+  vars['--motion-fast'] = `${motion.duration.fast}ms`;
+  vars['--motion-normal'] = `${motion.duration.normal}ms`;
+  vars['--motion-slow'] = `${motion.duration.slow}ms`;
+
   return vars;
 }
 
@@ -255,8 +374,13 @@ export function applyTheme(input, root = typeof document !== 'undefined' ? docum
   root.style.colorScheme = t.mode;
   root.dataset.themeMode = t.mode;
   root.dataset.themeName = t.name;
+  // Lets CSS switch on the motion level without a media query.
+  root.dataset.motion = resolveMotion(t).level;
 
   return t;
 }
 
-export default { PRESETS, DEFAULT_THEME, applyTheme, themeToCssVars, normalizeTheme, shade, SHADOW_LEVELS };
+export default {
+  PRESETS, DEFAULT_THEME, applyTheme, themeToCssVars, normalizeTheme, shade,
+  resolveMotion, SHADOW_LEVELS, MOTION_LEVELS, MOTION_EFFECTS,
+};
