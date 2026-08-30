@@ -5,6 +5,7 @@ import { APPS } from '../config/apps.js';
 import eventBus, { TOPICS } from '../utils/eventBus.js';
 import { store, dispatch, useKernel, actions, select } from '../kernel/index.js';
 import { read, write } from '../services/persistence.js';
+import { startFeeds } from '../features/tiles/feeds.js';
 
 /**
  * React binding for the kernel's window state.
@@ -23,15 +24,17 @@ export function useWindowManager() {
   const { drag, primeDrag, handleDrag, endDrag } = useDragManager();
   const snappedThisDrag = useRef(false);
 
-  // ---------- badge feed ----------
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const current = store.getState().badges.email ?? 0;
-      dispatch([actions.setBadge('email', current + 1), actions.animateBadge('email')]);
-      setTimeout(() => dispatch(actions.animateBadge(null)), 500);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
+  /*
+   * Live tiles.
+   *
+   * This was a single setInterval that added one to the email badge every ten
+   * seconds. Every simulated source now lives in features/tiles/feeds.js, on
+   * one scheduler that staggers them, so the board reads as separate things
+   * happening rather than a metronome — and the feeds that represent messages
+   * push their counts into the kernel and post to the notification bus, so the
+   * tile, its taskbar badge and the notification centre stay in agreement.
+   */
+  useEffect(() => startFeeds(), []);
 
   // ---------- keep tiling in step with the viewport ----------
   useEffect(() => {

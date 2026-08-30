@@ -1,4 +1,4 @@
-import React, { useState, memo, useCallback, useRef } from "react";
+import React, { useState, useEffect, memo, useCallback, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useContextMenu } from "../hooks/useContextMenu.js";
 import { ContextMenu } from "./ContextMenu.jsx";
@@ -6,6 +6,8 @@ import { CONTEXT_TYPES, MENU_ACTIONS } from "../utils/contextMenuStateMachine.js
 import eventBus, { TOPICS } from "../utils/eventBus.js";
 import { TileContent } from "../features/tiles/content/index.jsx";
 import { useMotion } from "../hooks/useMotion.js";
+import { useTileFeed } from "../features/tiles/useTileFeed.js";
+import { AttentionRing, TileProgress, StatusDot } from "../features/tiles/motionKit.jsx";
 
 const SPRING = { type: 'spring', stiffness: 400, damping: 30, mass: 0.8 };
 
@@ -33,6 +35,21 @@ export const Tile = memo(function Tile({
   const longPressTimeout = useRef(null);
   const tileRef = useRef(null);
   const motionSettings = useMotion();
+
+  /*
+   * The tile frame carries the parts of a live update that are the same
+   * whatever the app is: how far along something is, whether it is healthy,
+   * and whether it just asked for you. Faces stay free to render their own
+   * content without each reimplementing a progress bar.
+   */
+  const feed = useTileFeed(app.id);
+  const [attention, setAttention] = useState(false);
+  useEffect(() => {
+    if (feed.effect !== 'attention' || !feed.revision) return undefined;
+    setAttention(true);
+    const t = setTimeout(() => setAttention(false), 1400);
+    return () => clearTimeout(t);
+  }, [feed.revision, feed.effect]);
   const tiltEnabled = motionSettings.allows('tileHover');
 
   /*
@@ -148,7 +165,7 @@ export const Tile = memo(function Tile({
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => { setHovered(false); resetTilt(); }}
       onFocus={() => onFocusRequest?.()}
-      whileHover={tiltEnabled ? { scale: 1.03 } : undefined}
+      whileHover={tiltEnabled ? { scale: 1.03, y: -2 } : undefined}
       animate={focused && tiltEnabled ? { scale: 1.04 } : { scale: 1 }}
       transition={motionSettings.spring('fast')}
       // Keyboard-reachable, and the selected tile is the only stop in the
@@ -199,6 +216,38 @@ export const Tile = memo(function Tile({
         />
       )}
 
+      {/*
+        A light from the top edge. Flat colour fields read as paper; a single
+        soft gradient gives the tile a face without turning it glossy, and it
+        sits under the content so text keeps its contrast.
+      */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-[1]"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(255,255,255,.14), rgba(255,255,255,.03) 42%, rgba(0,0,0,.10))',
+        }}
+      />
+      {/* An inner hairline stops adjacent tiles of the same colour merging. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-[1]"
+        style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.18)' }}
+      />
+
+      <AttentionRing active={attention} />
+
+      {/*
+        The state light lives on the frame, not in the faces, so a tile reports
+        healthy / syncing / needs-you whether or not anyone wrote it a face.
+      */}
+      {feed.data?.status && (
+        <span className="absolute top-2 right-2 z-[3]">
+          <StatusDot status={feed.data.status} />
+        </span>
+      )}
+
       {/* Content sits above the tile face so the tilt reads as depth. */}
       <div
         className="relative z-[2] flex flex-col h-full"
@@ -245,6 +294,8 @@ export const Tile = memo(function Tile({
           </button>
         </motion.div>
       )}
+
+      <TileProgress value={feed.data?.progress ?? null} />
 
       <ContextMenu
         contextMenuState={tileContextMenu}

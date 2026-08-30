@@ -25,6 +25,8 @@ import { motion } from 'framer-motion';
 import {
   Mail, MessageCircle, Calendar, FileText, Image, Cloud, Play, Pause,
 } from 'lucide-react';
+import { Flip, Slide, Roll, Peek, Marquee } from '../motionKit.jsx';
+import { useTileFeed } from '../useTileFeed.js';
 
 const REVEAL = {
   initial: { opacity: 0, y: 4 },
@@ -56,6 +58,29 @@ const Head = ({ children }) => (
   <div className="flex items-start justify-between">{children}</div>
 );
 
+/**
+ * The two-line preview a live tile shows under its title.
+ *
+ * The animation is chosen by the feed, not by the face: a headline that
+ * replaces the last one flips, another message in a thread slides, a number
+ * rolls. Faces pass the feed straight through and get the right movement.
+ */
+function LiveLine({ feed, fallback = null }) {
+  const { data, revision, effect } = feed;
+  if (!data) return fallback;
+
+  const body = (
+    <>
+      <Marquee className="font-medium text-[10px]">{data.headline}</Marquee>
+      {data.sub && <div className="text-white/70 text-[10px] truncate">{data.sub}</div>}
+    </>
+  );
+
+  if (effect === 'flip') return <Flip trigger={revision} className="mt-1">{body}</Flip>;
+  if (effect === 'slide') return <Slide trigger={revision} className="mt-1 h-[26px]">{body}</Slide>;
+  return <Peek trigger={revision} className="mt-1">{body}</Peek>;
+}
+
 const Hint = ({ children, mono = false }) => (
   <div className={`text-[9px] text-white/80 bg-black/20 px-2 py-1 ${mono ? 'font-mono' : ''}`}>
     {children}
@@ -65,6 +90,7 @@ const Hint = ({ children, mono = false }) => (
 // ---------------------------------------------------------------- email
 
 function EmailTile({ app, badge, hovered, badgePulse, onQuick }) {
+  const feed = useTileFeed('email');
   return (
     <Frame>
       <Head>
@@ -82,9 +108,11 @@ function EmailTile({ app, badge, hovered, badgePulse, onQuick }) {
             )}
           </div>
           {badge > 0 && (
-            <div className="text-white/90 text-[10px] mt-1">
-              <div className="font-medium truncate">📧 Re: Project Update</div>
-              <div className="text-white/70">From: team@company.com</div>
+            <div className="text-white/90">
+              <LiveLine
+                feed={feed}
+                fallback={<div className="text-[10px] mt-1 text-white/70">Nothing new</div>}
+              />
             </div>
           )}
         </div>
@@ -102,6 +130,7 @@ function EmailTile({ app, badge, hovered, badgePulse, onQuick }) {
 // ------------------------------------------------------------- messages
 
 function MessagesTile({ app, badge, hovered, onQuick }) {
+  const feed = useTileFeed('messages');
   return (
     <Frame>
       <Head>
@@ -110,12 +139,7 @@ function MessagesTile({ app, badge, hovered, onQuick }) {
             {app.title}
             {badge > 0 && <span className="text-xs bg-white/30 px-1.5 py-0.5 rounded">{badge}</span>}
           </div>
-          {badge > 0 && (
-            <div className="text-white/90 text-[10px] mt-1">
-              <div className="font-medium">Sarah Johnson</div>
-              <div className="text-white/70 truncate">"See you at the meeting..."</div>
-            </div>
-          )}
+          {badge > 0 && <div className="text-white/90"><LiveLine feed={feed} /></div>}
         </div>
         <MessageCircle className="opacity-90" size={24} />
       </Head>
@@ -161,12 +185,15 @@ function ChatTile({ app, hovered, onQuick }) {
 // ------------------------------------------------------------- calendar
 
 function CalendarTile({ app, hovered, onQuick }) {
+  const feed = useTileFeed('calendar');
   return (
     <Frame>
       <Head>
         <div>
           <div className="font-semibold">{app.title}</div>
-          <div className="text-white/70 text-[11px] mt-1">Today: 3 events</div>
+          <Slide trigger={feed.revision} className="text-white/70 text-[11px] mt-1 h-[15px]">
+            {feed.data ? `${feed.data.headline} ${feed.data.sub}` : 'Today: 3 events'}
+          </Slide>
         </div>
         <Calendar className="opacity-90" size={24} />
       </Head>
@@ -183,12 +210,15 @@ function CalendarTile({ app, hovered, onQuick }) {
 // ---------------------------------------------------------------- tasks
 
 function TasksTile({ app, hovered, onQuick, Icon }) {
+  const feed = useTileFeed('tasks');
   return (
     <Frame>
       <Head>
         <div>
           <div className="font-semibold">{app.title}</div>
-          <div className="text-white/70 text-[11px] mt-1">Pending: 7 tasks</div>
+          <div className="text-white/70 text-[11px] mt-1 flex items-baseline gap-1">
+            <span>Pending:</span><Roll value={feed.data?.value ?? 7} /><span>tasks</span>
+          </div>
         </div>
         <Icon className="opacity-90" size={24} />
       </Head>
@@ -363,18 +393,25 @@ function MapsTile({ app, hovered, onQuick, Icon }) {
 // --------------------------------------------------------------- weather
 
 function WeatherTile({ app }) {
+  const feed = useTileFeed('weather');
+  const temp = feed.data?.value ?? 72;
+  const condition = feed.data?.headline ?? 'Partly cloudy';
   return (
     <Frame>
       <Head>
         <div>
           <div className="font-semibold">{app.title}</div>
-          <div className="text-white/70 text-[11px] mt-1">San Francisco</div>
+          <div className="text-white/70 text-[11px] mt-1">{feed.data?.sub ?? 'San Francisco'}</div>
         </div>
         <Cloud className="opacity-90" size={24} />
       </Head>
       <div>
-        <div className="text-3xl font-bold">72°</div>
-        <div className="text-[11px] text-white/80">Partly Cloudy</div>
+        {/* The temperature rolls in the direction it moved. */}
+        <div className="text-3xl font-bold flex items-baseline">
+          <Roll value={temp} />
+          <span>°</span>
+        </div>
+        <Flip trigger={condition} className="text-[11px] text-white/80">{condition}</Flip>
       </div>
     </Frame>
   );
@@ -383,12 +420,15 @@ function WeatherTile({ app }) {
 // ----------------------------------------------------------------- files
 
 function FilesTile({ app, hovered, Icon }) {
+  const feed = useTileFeed('files');
   return (
     <Frame>
       <Head>
         <div>
           <div className="font-semibold">{app.title}</div>
-          <div className="text-white/70 text-[11px] mt-1">Quick access</div>
+          <Flip trigger={feed.revision} className="text-white/70 text-[11px] mt-1">
+            {feed.data ? feed.data.sub : 'Quick access'}
+          </Flip>
         </div>
         <Icon className="opacity-90" size={24} />
       </Head>
@@ -554,13 +594,33 @@ function TextTile({ app, hovered, Icon }) {
 
 // --------------------------------------------------------------- default
 
+/**
+ * The fallback face.
+ *
+ * It is not a placeholder any more: any app with a feed gets its live value
+ * here without needing a face of its own, which is what makes the whole board
+ * move rather than the eight tiles someone hand-wrote.
+ */
 export function DefaultTile({ app, hovered, Icon }) {
+  const feed = useTileFeed(app.id);
+  const value = feed.data?.value;
+
   return (
     <>
       <Icon className="opacity-90" size={28} />
       <motion.div animate={hovered ? { x: 6, scale: 1.02 } : { x: 0, scale: 1 }} {...NUDGE}>
         <div className="font-semibold">{app.title}</div>
-        <div className="text-white/70 text-[11px]">Tile</div>
+        {value != null ? (
+          <div className="flex items-baseline gap-1">
+            <span className="text-xl font-bold leading-none"><Roll value={value} /></span>
+            {feed.data.unit && <span className="text-[11px] text-white/70">{feed.data.unit}</span>}
+            <span className="text-[10px] text-white/60 ml-1 truncate">{feed.data.headline}</span>
+          </div>
+        ) : feed.data ? (
+          <LiveLine feed={feed} />
+        ) : (
+          <div className="text-white/70 text-[11px]">Tile</div>
+        )}
       </motion.div>
     </>
   );
