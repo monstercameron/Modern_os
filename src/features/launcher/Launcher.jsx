@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DesktopGrid } from '../../components/DesktopGrid.jsx';
 import { useKernel, dispatch, actions, select } from '../../kernel/index.js';
@@ -17,11 +17,23 @@ export function Launcher({ apps, badges, onOpen, onQuick, animatingBadge }) {
   const tileSizes = useKernel(select.tileSizes);
   const editMode = useKernel(select.tileEditMode);
 
-  // Claim the launcher scope for as long as the overlay is up.
+  // Counts openings, purely to key the board so its filter and selection start
+  // fresh every time.
+  const [openCount, setOpenCount] = useState(0);
+  useEffect(() => {
+    if (open) setOpenCount((n) => n + 1);
+  }, [open]);
+
+  // Claim the launcher scope for as long as the overlay is up, and hand focus
+  // to the board so typing filters and the arrow keys move a selection without
+  // the user first clicking anything.
   useEffect(() => {
     if (!open) return undefined;
     const release = keymap.pushScope(SCOPES.LAUNCHER);
-    return release;
+    const id = requestAnimationFrame(() => {
+      document.querySelector('[data-launcher-grid]')?.focus({ preventScroll: true });
+    });
+    return () => { cancelAnimationFrame(id); release(); };
   }, [open]);
 
   const close = () => dispatch(actions.closeLauncher());
@@ -56,7 +68,10 @@ export function Launcher({ apps, badges, onOpen, onQuick, animatingBadge }) {
             exit={{ y: -12, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 460, damping: 38, mass: 0.7 }}
           >
+            {/* Remounted on each open so the board always comes up unfiltered
+                with nothing selected, rather than resuming the last search. */}
             <DesktopGrid
+              key={openCount}
               apps={apps}
               badges={badges}
               onOpen={onOpen}

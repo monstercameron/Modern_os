@@ -24,6 +24,8 @@ export const Tile = memo(function Tile({
   isEditMode = false,
   onUpdateSize,
   animatingBadge = false,
+  focused = false,
+  onFocusRequest,
 }) {
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -145,15 +147,29 @@ export const Tile = memo(function Tile({
       onPointerMove={handlePointerMove}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => { setHovered(false); resetTilt(); }}
+      onFocus={() => onFocusRequest?.()}
       whileHover={tiltEnabled ? { scale: 1.03 } : undefined}
+      animate={focused && tiltEnabled ? { scale: 1.04 } : { scale: 1 }}
       transition={motionSettings.spring('fast')}
-      style={tiltEnabled ? {
-        rotateX,
-        rotateY,
-        transformPerspective: 700,
-        transformStyle: 'preserve-3d',
-      } : undefined}
-      className={`relative ${app.size} ${app.color} overflow-hidden p-3 flex flex-col text-left text-white cursor-pointer border border-black/20`}
+      // Keyboard-reachable, and the selected tile is the only stop in the
+      // tab order so Tab does not walk all 35 tiles.
+      tabIndex={focused ? 0 : -1}
+      role="button"
+      aria-label={app.title}
+      data-focused={focused ? 'true' : 'false'}
+      style={{
+        ...(tiltEnabled ? {
+          rotateX,
+          rotateY,
+          transformPerspective: 700,
+          transformStyle: 'preserve-3d',
+        } : {}),
+        // The focus ring sits outside the tile so it survives overflow-hidden.
+        boxShadow: focused
+          ? '0 0 0 2px var(--theme-background), 0 0 0 4px var(--theme-accent)'
+          : undefined,
+      }}
+      className={`relative ${app.size} ${app.color} overflow-hidden p-3 flex flex-col text-left text-white cursor-pointer border border-black/20 outline-none`}
     >
       {/* Specular gloss that follows the tilt. */}
       {tiltEnabled && hovered && (
