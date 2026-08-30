@@ -149,21 +149,13 @@ const MediaControls = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // If no track is loaded, show placeholder
-  if (!mediaState.track) {
-    return (
-      <motion.div
-        className="p-4 bg-white/5 rounded-xl backdrop-blur-sm"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
-      >
-        <div className="text-center text-white/40 text-sm py-8">
-          No media playing
-        </div>
-      </motion.div>
-    );
-  }
+  /*
+   * Nothing playing means nothing to show. This used to render a bordered box
+   * with 'No media playing' and eight units of padding, which cost the
+   * notification panel roughly 150px of height for the news that there is no
+   * news. The section collapses instead.
+   */
+  if (!mediaState.track) return null;
 
   const { track, isPlaying, currentTime, volume, isMuted } = mediaState;
   const progress = track.duration > 0 ? (currentTime / track.duration) * 100 : 0;
@@ -171,7 +163,8 @@ const MediaControls = () => {
 
   return (
     <motion.div
-      className="p-4 bg-white/5 rounded-xl backdrop-blur-sm"
+      className="p-4 border-b"
+      style={{ borderColor: 'var(--theme-border)' }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
@@ -179,11 +172,11 @@ const MediaControls = () => {
       {/* Album Art and Info */}
       <div className="flex gap-3 mb-3">
         {/* Album Art */}
-        <div className="w-16 h-16 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
+        <div className="w-14 h-14 overflow-hidden flex-shrink-0 bg-[var(--theme-surface-alt)]">
           {track.albumArt ? (
             <img src={track.albumArt} alt={track.album} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-white/30 text-2xl">
+            <div className="w-full h-full flex items-center justify-center text-[var(--theme-text-muted)] text-xl">
               🎵
             </div>
           )}
@@ -191,13 +184,13 @@ const MediaControls = () => {
 
         {/* Track Info */}
         <div className="flex-1 min-w-0">
-          <div className="text-white font-medium truncate text-sm">
+          <div className="font-medium truncate text-[12px] text-[var(--theme-text)]">
             {track.title}
           </div>
-          <div className="text-white/60 text-xs truncate">
+          <div className="text-[11px] truncate text-[var(--theme-text-muted)]">
             {track.artist}
           </div>
-          <div className="text-white/40 text-xs truncate">
+          <div className="text-[11px] truncate text-[var(--theme-text-muted)] opacity-70">
             {track.album}
           </div>
         </div>
@@ -206,23 +199,23 @@ const MediaControls = () => {
       {/* Progress Bar */}
       <div className="mb-3">
         <div
-          className="h-1 bg-white/10 rounded-full cursor-pointer relative group"
+          className="h-1 bg-[var(--theme-border)] cursor-pointer relative group"
           onClick={handleProgressChange}
           onMouseDown={() => setIsDraggingProgress(true)}
           onMouseUp={() => setIsDraggingProgress(false)}
           onMouseLeave={() => setIsDraggingProgress(false)}
         >
           <motion.div
-            className="h-full bg-white/80 rounded-full relative"
+            className="h-full relative bg-[var(--theme-accent)]"
             style={{ width: `${progress}%` }}
             initial={false}
             transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
           >
             {/* Progress thumb */}
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-[var(--theme-accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
           </motion.div>
         </div>
-        <div className="flex justify-between text-white/40 text-xs mt-1">
+        <div className="flex justify-between text-[10px] tabular-nums mt-1 text-[var(--theme-text-muted)]">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(track.duration)}</span>
         </div>
@@ -233,7 +226,7 @@ const MediaControls = () => {
         {/* Playback Controls */}
         <div className="flex items-center gap-2">
           <motion.button
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/80 hover:text-white"
+            className="p-1.5 transition-colors text-[var(--theme-text-muted)] hover:text-[var(--theme-text)]"
             onClick={handlePrevious}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -243,7 +236,7 @@ const MediaControls = () => {
           </motion.button>
 
           <motion.button
-            className="p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors text-white"
+            className="p-2 rounded-full transition-colors bg-[var(--theme-accent)] text-[var(--theme-accent-text)]"
             onClick={handlePlayPause}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -257,7 +250,7 @@ const MediaControls = () => {
           </motion.button>
 
           <motion.button
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/80 hover:text-white"
+            className="p-1.5 transition-colors text-[var(--theme-text-muted)] hover:text-[var(--theme-text)]"
             onClick={handleNext}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -270,7 +263,7 @@ const MediaControls = () => {
         {/* Volume Control */}
         <div className="flex items-center gap-2">
           <motion.button
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/80 hover:text-white"
+            className="p-1.5 transition-colors text-[var(--theme-text-muted)] hover:text-[var(--theme-text)]"
             onClick={handleMuteToggle}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -283,7 +276,7 @@ const MediaControls = () => {
             )}
           </motion.button>
 
-          <div className="w-20 h-1 bg-white/10 rounded-full cursor-pointer relative group">
+          <div className="w-20 h-1 bg-[var(--theme-border)] cursor-pointer relative group">
             <div
               className="h-full"
               onClick={handleVolumeChange}
@@ -292,12 +285,12 @@ const MediaControls = () => {
               onMouseLeave={() => setIsDraggingVolume(false)}
             >
               <motion.div
-                className="h-full bg-white/80 rounded-full relative"
+                className="h-full relative bg-[var(--theme-accent)]"
                 style={{ width: `${displayVolume * 100}%` }}
                 initial={false}
                 transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
               >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[var(--theme-accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
               </motion.div>
             </div>
           </div>

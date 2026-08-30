@@ -199,13 +199,17 @@ export function useDesktopKeymap() {
 
     // ---- task manager ----
     /*
-     * Not Ctrl+Shift+Escape. That is Windows' own Task Manager chord and the
-     * OS takes it before the page is told anything, so the binding looked
-     * right and never once fired. It is in RESERVED_CHORDS now so the audit
-     * catches anyone trying again.
+     * Not Ctrl+Shift+Escape, and not $mod+Escape either -- with $mod set to
+     * Ctrl+Shift those are the same chord, and it is Windows' own Task Manager
+     * shortcut, which the OS takes before the page is told anything. Moving
+     * the binding from one spelling to the other changed nothing; a synthetic
+     * keydown in a test still fired it, which is exactly why the first fix
+     * looked like it worked. It needs a different chord, not a different name
+     * for the same one. Ctrl+Shift+L is unclaimed by the browsers and by the
+     * rest of this keymap.
      */
     bindings.push([
-      '$mod+escape',
+      '$mod+l',
       () => {
         const taskmgr = APPS.find((a) => a.id === 'taskmgr');
         if (taskmgr) dispatch(actions.openWindow(taskmgr, {}));
