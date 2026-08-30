@@ -3,7 +3,7 @@ import { motion, useDragControls } from "framer-motion";
 import { AppWindow, X, Maximize2, Minimize2, ChevronDown, LayoutGrid, Move } from "lucide-react";
 import { TB, SN } from "../utils/constants.js";
 import { SnapCell, SnapIcon } from "./SnapComponents.jsx";
-import { SplashScreen } from "./SplashScreen.jsx";
+import { useMotion } from "../hooks/useMotion.js";
 import { ContextMenu } from "./ContextMenu.jsx";
 import { AboutDialog } from "./AboutDialog.jsx";
 import { useWindowState } from "../hooks/useWindowState.js";
@@ -60,9 +60,30 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   const resizeStartPos = useRef(null);
   const resizeStartBounds = useRef(null);
   
-  // Splash screen state
-  const [showSplash, setShowSplash] = useState(true);
   const [animatingFromTile, setAnimatingFromTile] = useState(!!win.tilePosition);
+
+  /*
+   * Loading face.
+   *
+   * A window opens face down on the tile that launched it and turns over as it
+   * travels to its bounds — that rotation is the reveal. While it is still
+   * turning, this overlay covers the content with the app's icon, so the first
+   * half of the flip reads as "loading" rather than as mirrored text. It fades
+   * out as the window lands.
+   */
+  const [loading, setLoading] = useState(true);
+  const loadingMotion = useMotion();
+  const flipEnabled = loadingMotion.allows('windowTransitions');
+  const AppIcon = app?.icon || win.icon;
+
+  // Both the wait and the turn scale with the theme's animation speed.
+  const flipMs = Math.round(560 * loadingMotion.speed) || 0;
+  const holdMs = flipEnabled ? Math.round(420 * loadingMotion.speed) : 0;
+
+  useEffect(() => {
+    const toReady = setTimeout(() => setLoading(false), holdMs);
+    return () => clearTimeout(toReady);
+  }, [holdMs]);
   
   // Context menu for window
   const {
@@ -112,14 +133,6 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
         break;
     }
   }, [win, on]);
-  
-  // Hide splash screen after minimum 100ms
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
   
   // Update window menu metadata when window state changes
   useEffect(() => {
@@ -306,7 +319,17 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
     ...borderStyle
   }), [win.z, borderStyle]);
 
-  // Initial position for tile flip animation
+  /*
+   * The window turns over as it opens: it starts on the tile that launched it,
+   * face down, showing that app's icon while it loads. When the app is ready
+   * the window travels to its bounds and rotates to face the viewer, which is
+   * the moment its content appears.
+   *
+   * This is one animation on one element. An earlier attempt put a second
+   * flipping card inside the window; the two rotations fought over the same
+   * axis and could stall part-way, leaving windows mirrored or stuck at tile
+   * size.
+   */
   const initialPosition = useMemo(() => {
     if (win.tilePosition && animatingFromTile) {
       return {
@@ -317,27 +340,32 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
         width: win.tilePosition.w,
         height: win.tilePosition.h,
         scale: 1,
-        rotateY: 180
+        rotateY: 180,
       };
     }
     return null;
   }, [win.tilePosition, animatingFromTile]);
 
-  const animateStyle = useMemo(() => {
-    const style = {
-      x: 0,
-      y: 0,
-      left: win.b.x,
-      top: win.b.y,
-      width: win.b.w,
-      height: win.b.h,
-      // The focused window lifts very slightly. Enough to read as "this one",
-      // small enough that a tiled layout still looks like a grid.
-      scale: active && win.sn !== SN.FULL ? 1.006 : 1,
-      rotateY: 0
-    };
-    return style;
-  }, [win.b.x, win.b.y, win.b.w, win.b.h, win.id, win.sn, active]);
+  /*
+   * `scale` is deliberately constant.
+   *
+   * A focus-emphasis scale (1 -> 1.006) was tried here and broke the opening
+   * animation: that tiny distance finishes in a frame or two, onAnimationComplete
+   * fires for the whole element, animatingFromTile flips, the transition prop
+   * swaps mid-flight and the entrance stalls — leaving windows frozen at tile
+   * size, still rotated. Focus is signalled by the accent border instead, which
+   * the theme already scales through --theme-border-width-focus.
+   */
+  const animateStyle = useMemo(() => ({
+    x: 0,
+    y: 0,
+    left: win.b.x,
+    top: win.b.y,
+    width: win.b.w,
+    height: win.b.h,
+    scale: 1,
+    rotateY: 0,
+  }), [win.b.x, win.b.y, win.b.w, win.b.h, win.id, win.sn]);
 
   const divRef = useRef(null);
 
@@ -564,20 +592,46 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
         </div>
       </div>
       
-      {/* Window content area - full height */}
-      <div className="w-full h-full overflow-hidden">
+      {/*
+        Window content, presented as a card that turns over.
+
+        While the app is loading the window shows its icon on a tile-coloured
+        face; once it is ready the card flips on the Y axis to reveal the
+        content behind it. Both faces are mounted the whole time and hidden by
+        backface-visibility, so the app has already rendered by the time it
+        comes into view and there is no second pop of layout.
+      */}
+      <div className="w-full h-full overflow-hidden relative">
         <div className="w-full h-full overflow-auto">{children}</div>
+
+        {/* The loading face: the app's icon, shown on the tile-coloured window
+            while it is face down. It is removed as the window turns over. */}
+        {loading && (
+          <motion.div
+            className="absolute inset-0 grid place-items-center z-10"
+            style={{ backgroundColor: 'var(--theme-surface)' }}
+            data-window-loading
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* Counter-flipped, because the window itself is face down while
+                this is on screen. */}
+            <div className="flex flex-col items-center gap-3" style={{ transform: 'scaleX(-1)' }}>
+              <motion.div
+                className={`grid place-items-center ${app?.color || 'bg-slate-700'}`}
+                style={{ width: 56, height: 56, borderRadius: 'var(--theme-radius)' }}
+                animate={flipEnabled ? { scale: [1, 1.07, 1] } : undefined}
+                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                {AppIcon ? <AppIcon size={26} color="#fff" /> : null}
+              </motion.div>
+              <div className="text-[12px] font-medium" style={{ color: 'var(--theme-text)' }}>{win.t}</div>
+            </div>
+          </motion.div>
+        )}
       </div>
-      
-      {/* Splash Screen */}
-      {showSplash && app && (
-        <SplashScreen 
-          title={app.title} 
-          icon={app.icon} 
-          color={app.color} 
-          type={app.splashType || 'logo'} 
-        />
-      )}
+
       {active && (
         <>
           <ResizeHandle position="n" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />

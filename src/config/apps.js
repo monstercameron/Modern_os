@@ -33,19 +33,15 @@ import {
   Info,
 } from "lucide-react";
 
-import { BrowserApp } from "../apps/BrowserApp.jsx";
-import { AboutApp } from "../apps/AboutApp.jsx";
-import { TerminalApp } from "../apps/TerminalApp.jsx";
-import { SettingsApp } from "../apps/SettingsApp.jsx";
 import { StubApp } from "../apps/StubApp.jsx";
-import { TileConfiguratorApp } from "../apps/TileConfiguratorApp.jsx";
-import { TaskManagerApp } from "../apps/TaskManagerApp.jsx";
 
 // Redesigned demo apps: responsive, themed, and each with a `~` console.
 import { EmailApp, MessagesApp, ChatApp, ContactsApp, VideoCallApp } from "../features/apps/CommunicationApps.jsx";
 import { TasksApp, NotesApp, CalendarApp, TextApp, PresentationApp } from "../features/apps/ProductivityApps.jsx";
 import { MusicApp, PhotosApp, VideoApp, VoiceApp, AudioRecorderApp, CameraApp, DrawingApp, PodcastApp } from "../features/apps/MediaApps.jsx";
 import { FilesApp, ActivityMonitorApp, DiskUtilityApp, CalculatorApp, WeatherApp, MapsApp, NewsApp, DatabaseApp, ClockApp, CodeEditorApp, PDFViewerApp } from "../features/apps/SystemApps.jsx";
+import { TerminalApp, BrowserApp, AboutApp } from "../features/apps/ShellApps.jsx";
+import { SettingsApp, TaskManagerApp, TileConfiguratorApp } from "../features/apps/SystemToolApps.jsx";
 import { getManifest } from "./manifests.js";
 
 export const APPS = [
