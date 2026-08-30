@@ -101,6 +101,12 @@ export const ContextMenu = memo(function ContextMenu({ contextMenuState, onClose
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: -4 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
+        // The menu is rendered inside the element it acts on (a tile, a window),
+        // so a click that reaches that element would also trigger its own
+        // handler — picking "Resize Tile" would open the app as well.
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
         className="fixed z-[9999] min-w-[200px] py-1 rounded border shadow-xl"
         style={{
           left: `${constrainedPos.x}px`,

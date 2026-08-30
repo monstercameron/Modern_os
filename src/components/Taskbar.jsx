@@ -10,6 +10,7 @@ import {
   X 
 } from 'lucide-react';
 import { TB, SN, clampX } from '../utils/constants.js';
+import { WorkspaceSwitcher } from '../features/workspaces/WorkspaceSwitcher.jsx';
 import { NotificationCenter } from './NotificationCenter.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
 import { useSettings } from '../hooks/useSettings.jsx';
@@ -281,6 +282,7 @@ export const Taskbar = memo(function Taskbar({ windows, activeId, clock }) {
         onContextMenu={(e) => handleTaskbarContextMenu(e)}
       >
         <div className="flex items-center gap-1 ml-2">
+          <WorkspaceSwitcher />
           {windows.map(w => (
             <button
               key={w.id}

@@ -54,7 +54,7 @@ export const DesktopGrid = memo(function DesktopGrid({ apps, badges, onOpen, onQ
 
   return (
     <div 
-      className="absolute inset-x-0 top-10 bottom-0 p-4 overflow-y-auto grid grid-cols-6 auto-rows-[96px] gap-2"
+      className="absolute inset-0 p-4 overflow-y-auto grid grid-cols-6 auto-rows-[96px] gap-2"
       onContextMenu={(e) => handleDesktopContextMenu(e)}
     >
       {apps.map(app => {

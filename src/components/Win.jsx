@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useMemo, memo, useEffect } from "react";
 import { motion, useDragControls } from "framer-motion";
-import { AppWindow, X, Maximize2, Minimize2, ChevronDown } from "lucide-react";
+import { AppWindow, X, Maximize2, Minimize2, ChevronDown, LayoutGrid, Move } from "lucide-react";
 import { TB, SN } from "../utils/constants.js";
 import { SnapCell, SnapIcon } from "./SnapComponents.jsx";
 import { SplashScreen } from "./SplashScreen.jsx";
@@ -412,7 +412,7 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
           console.error('Error reading rect', err);
         }
       }}
-      drag={win.sn !== SN.FULL}
+      drag={win.floating && win.sn !== SN.FULL}
       dragMomentum={false}
       dragElastic={0}
       dragListener={false}
@@ -457,49 +457,74 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
               <div className="animate-spin h-6 w-6 border-2 border-white/30 border-t-white"></div>
             </div>
           )}
-          <button 
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              setActive(win.id); 
-              on("min"); 
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => e.stopPropagation()}
-            className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer" 
-            title="Minimize"
-          >
-            <ChevronDown size={16}/>
-          </button>
+          {/*
+            Tiled windows carry a single control — the toggle out to floating.
+            Everything else about a tiled window is the layout's business, and
+            close/minimize stay reachable from the taskbar and the keymap.
+            Floating windows get the full set, plus the toggle back into tiling.
+          */}
           <button
-            onMouseEnter={handleMaxHoverStart}
-            onMouseLeave={handleMaxHoverEnd}
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              setActive(win.id); 
-              on(windowState.isMaximized ? "unmax" : "max"); 
+            onClick={(e) => {
+              e.stopPropagation();
+              setActive(win.id);
+              on("toggleFloat");
             }}
-            // IMPORTANT: These event handlers prevent the parent's drag/doubleclick
-            // from interfering with maximize button functionality
             onPointerDown={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
             className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer"
-            title={windowState.isMaximized ? "Restore / Snap" : "Maximize / Snap"}
+            data-window-action="toggle-float"
+            title={win.floating ? "Return to tiling" : "Float this window"}
           >
-            {windowState.isMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
+            {win.floating ? <LayoutGrid size={16}/> : <Move size={16}/>}
           </button>
-          <button 
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              setActive(win.id); 
-              on("close"); 
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => e.stopPropagation()}
-            className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer" 
-            title="Close"
-          >
-            <X size={16}/>
-          </button>
+
+          {win.floating && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActive(win.id);
+                  on("min");
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer"
+                title="Minimize"
+              >
+                <ChevronDown size={16}/>
+              </button>
+              <button
+                onMouseEnter={handleMaxHoverStart}
+                onMouseLeave={handleMaxHoverEnd}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActive(win.id);
+                  on(windowState.isMaximized ? "unmax" : "max");
+                }}
+                // IMPORTANT: These event handlers prevent the parent's drag/doubleclick
+                // from interfering with maximize button functionality
+                onPointerDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer"
+                title={windowState.isMaximized ? "Restore / Snap" : "Maximize / Snap"}
+              >
+                {windowState.isMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActive(win.id);
+                  on("close");
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                className="px-2 py-1 hover:bg-white/10 h-10 cursor-pointer"
+                title="Close"
+              >
+                <X size={16}/>
+              </button>
+            </>
+          )}
 
           {showSnap && (
             <div className="absolute top-full right-0 mt-1 bg-slate-900 text-white border border-white/20 p-3 grid grid-cols-6 gap-3 z-[2000] w-[360px]"
@@ -537,14 +562,14 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       )}
       {active && (
         <>
-          <ResizeHandle position="n" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
-          <ResizeHandle position="ne" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
-          <ResizeHandle position="e" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
-          <ResizeHandle position="se" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
-          <ResizeHandle position="s" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
-          <ResizeHandle position="sw" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
-          <ResizeHandle position="w" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
-          <ResizeHandle position="nw" onResizeStart={handleResizeStart} disabled={win.sn === SN.FULL} />
+          <ResizeHandle position="n" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />
+          <ResizeHandle position="ne" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />
+          <ResizeHandle position="e" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />
+          <ResizeHandle position="se" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />
+          <ResizeHandle position="s" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />
+          <ResizeHandle position="sw" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />
+          <ResizeHandle position="w" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />
+          <ResizeHandle position="nw" onResizeStart={handleResizeStart} disabled={!win.floating || win.sn === SN.FULL} />
         </>
       )}
 

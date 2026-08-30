@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "./AppShell.jsx";
+import { store } from "../kernel/index.js";
 import { motion } from "framer-motion";
 import { 
   Activity, 
@@ -32,6 +33,28 @@ export function TaskManagerApp() {
       memory: Math.floor(Math.random() * 300) + 50, // 50-350 MB
       cpu: Math.floor(Math.random() * 60) + 5, // 5-65%
     };
+  }, []);
+
+  // Seed from the windows that are already open. Events only tell us about
+  // windows opened after this app mounts, so without this the process list
+  // starts empty no matter how many windows are running.
+  useEffect(() => {
+    const existing = store.getState().windows;
+    if (existing.length === 0) return;
+    setProcesses((prev) => {
+      const known = new Set(prev.map((p) => p.windowId));
+      const seeded = existing
+        .filter((w) => !known.has(w.id))
+        .map((w) => ({
+          windowId: w.id,
+          appName: w.t || 'Unknown App',
+          appId: w.appId,
+          status: w.m ? 'Minimized' : 'Running',
+          ...generateResourceUsage(),
+          startTime: Date.now(),
+        }));
+      return seeded.length ? [...prev, ...seeded] : prev;
+    });
   }, []);
 
   // Subscribe to window events

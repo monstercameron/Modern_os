@@ -1,357 +1,163 @@
-import { useState, useEffect, useRef } from 'react';
-import { uid, SN } from '../utils/constants.js';
-import { qb, ghostFromPoint } from '../utils/geometry.js';
-import { clearBadgeState, acc } from '../utils/appHelpers.js';
+import { useCallback, useEffect, useRef } from 'react';
+import { SN } from '../utils/constants.js';
 import { useDragManager } from './useDragManager.js';
-import * as WindowActions from './windowActions.js';
-import { isSingleInstance, getMaxInstances } from '../config/manifests.js';
 import { APPS } from '../config/apps.js';
 import eventBus, { TOPICS } from '../utils/eventBus.js';
+import { store, dispatch, useKernel, actions, select } from '../kernel/index.js';
+import { read, write } from '../services/persistence.js';
 
 /**
- * Custom hook for managing desktop windows and badges
- * Handles all window operations: open, close, minimize, maximize, snap, drag
+ * React binding for the kernel's window state.
+ *
+ * The kernel owns the state; this hook translates the legacy
+ * act(id, "type", payload) vocabulary that Win.jsx and Taskbar.jsx speak into
+ * kernel actions, and manages the drag session (which is transient UI state,
+ * not desktop state, so it stays out of the kernel).
  */
 export function useWindowManager() {
-  // Core state
-  const [wns, setW] = useState([]);
-  const [actId, setActId] = useState(null);
-  const [badges, setBadges] = useState({ messages: 5, email: 3 });
-  const [animatingBadge, setAnimatingBadge] = useState(null);
-  
-  // Drag management
+  const windows = useKernel(select.allWindows);
+  const actId = useKernel(select.activeWindowId);
+  const badges = useKernel(select.badges);
+  const animatingBadge = useKernel(select.animatingBadge);
+
   const { drag, primeDrag, handleDrag, endDrag } = useDragManager();
   const snappedThisDrag = useRef(false);
 
-  // Increment email badge every 10 seconds with animation
+  // ---------- badge feed ----------
   useEffect(() => {
     const interval = setInterval(() => {
-      setBadges(prev => {
-        const newEmail = prev.email + 1;
-        setAnimatingBadge('email');
-        setTimeout(() => setAnimatingBadge(null), 500); // Clear animation after 500ms
-        return { ...prev, email: newEmail };
-      });
-    }, 10000); // 10 seconds
-
+      const current = store.getState().badges.email ?? 0;
+      dispatch([actions.setBadge('email', current + 1), actions.animateBadge('email')]);
+      setTimeout(() => dispatch(actions.animateBadge(null)), 500);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Ensure there's always an active window
+  // ---------- keep tiling in step with the viewport ----------
   useEffect(() => {
-    const visibleWindows = wns.filter(w => !w.m);
-    
-    if (visibleWindows.length === 0) {
-      // No visible windows - clear active window
-      if (actId !== null) setActId(null);
-    } else {
-      const activeWindowExists = visibleWindows.some(w => w.id === actId);
-      if (!activeWindowExists) {
-        // Find the window with highest z-index (most recently interacted)
-        const highestZWindow = visibleWindows.reduce((highest, current) => 
-          current.z > highest.z ? current : highest
-        );
-        if (highestZWindow.id !== actId) {
-          setActId(highestZWindow.id);
-          fz(highestZWindow.id);
-        }
-      }
-    }
-  }, [wns, actId]);
-
-  // Subscribe to taskbar events for decoupled communication
-  useEffect(() => {
-    // Handle window button clicks from taskbar
-    const unsubscribeClick = eventBus.subscribe(TOPICS.TASKBAR_WINDOW_CLICK, ({ winId, isMinimized, isActive }) => {
-      if (isMinimized) {
-        unmin(winId);
-        setActive(winId);
-      } else if (isActive) {
-        act(winId, "min");
-      } else {
-        setActive(winId);
-      }
-    });
-
-    // Handle window actions from taskbar preview
-    const unsubscribeAction = eventBus.subscribe(TOPICS.TASKBAR_WINDOW_ACTION, ({ winId, action }) => {
-      if (action === 'activate') {
-        setActive(winId);
-      } else {
-        act(winId, action);
-      }
-    });
-
+    let frame = 0;
+    const onResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => dispatch(actions.retileAll()));
+    };
+    window.addEventListener('resize', onResize);
     return () => {
-      unsubscribeClick();
-      unsubscribeAction();
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', onResize);
     };
   }, []);
 
-  /**
-   * Bring window to front (focus z-index)
-   */
-  const fz = (id) => setW(ws => {
-    const maxZ = Math.max(...ws.map(w => w.z), 999);
-    return ws.map(w => ({ ...w, z: w.id === id ? maxZ + 1 : w.z }));
-  });
+  // ---------- persist tile sizes ----------
+  const tileSizes = useKernel(select.tileSizes);
+  useEffect(() => {
+    write('tileSizes', tileSizes);
+  }, [tileSizes]);
+
+  const setActive = useCallback((id) => {
+    dispatch(actions.focusWindow(id));
+  }, []);
+
+  const openA = useCallback((app, init = {}) => {
+    // Callers pass either an APPS entry or a bare app id.
+    const entry = typeof app === 'string' ? APPS.find((a) => a.id === app) : app;
+    if (!entry) return;
+    dispatch(actions.openWindow(entry, init));
+  }, []);
 
   /**
-   * Set active window (focus + bring to front)
+   * Legacy action bridge. Every branch resolves to kernel actions.
    */
-  const setActive = (id) => { 
-    setActId(id); 
-    fz(id);
-    
-    // Publish window focus event for Task Manager
-    if (id) {
-      eventBus.publish(TOPICS.WINDOW_FOCUS, { windowId: id });
-    }
-  };
+  const act = useCallback((id, type, payload) => {
+    switch (type) {
+      case 'close': return void dispatch(actions.closeWindow(id));
+      case 'min': return void dispatch(actions.minimizeWindow(id));
+      case 'unmin': return void dispatch(actions.restoreWindow(id));
+      case 'max': return void dispatch(actions.maximizeWindow(id));
+      case 'unmax': return void dispatch(actions.unmaximizeWindow(id));
+      case 'dbl': return void dispatch(actions.toggleMaximizeWindow(id));
+      case 'toggleFloat': return void dispatch(actions.toggleFloating(id));
+      case 'snap': return void dispatch(actions.snapWindow(id, payload));
+      case 'snapQuad': return void dispatch(actions.snapWindowQuad(id, payload));
+      case 'snapToBounds':
+        return void dispatch(actions.setWindowBounds(id, payload, { snapped: true }));
+      case 'resize':
+        return void dispatch(actions.setWindowBounds(id, payload));
 
-  /**
-   * Open a new app window
-   * @param {Object} app - App config with id, title, color, icon, content
-   * @param {Object} init - Initial data for the app (optional)
-   */
-  const openA = (app, init = {}) => {
-    // Check if app is single instance
-    if (isSingleInstance(app.id)) {
-      const existingWindow = wns.find(w => w.appId === app.id);
-      if (existingWindow) {
-        // Unminimize if minimized and bring to front
-        if (existingWindow.m) {
-          act(existingWindow.id, 'unmin');
-        }
-        setActive(existingWindow.id);
+      case 'prime':
+      case 'dragStart': {
+        const win = store.getState().windows.find((w) => w.id === id);
+        if (win) primeDrag(win);
+        snappedThisDrag.current = false;
         return;
       }
-    } else {
-      // Check max instances limit
-      const instances = wns.filter(w => w.appId === app.id).length;
-      const maxInstances = getMaxInstances(app.id);
-      if (instances >= maxInstances) {
-        console.warn(`${app.title} has reached max instances (${maxInstances})`);
+
+      case 'drag':
+        return void handleDrag(id, payload);
+
+      case 'dragEnd': {
+        const target = endDrag(payload);
+        if (target && !snappedThisDrag.current) {
+          snappedThisDrag.current = true;
+          dispatch(actions.setWindowBounds(id, target.payload, { snapped: true }));
+          return;
+        }
+        dispatch(actions.moveWindowTo(id, payload.x, payload.y));
         return;
       }
+
+      default:
+        return;
     }
-    
-    setBadges(b => clearBadgeState(b, app.id));
-    const id = uid();
-    const quadrantIndex = wns.length;
-    const q = qb(quadrantIndex); // snap new window to next quadrant
-    
-    // Create the new window object
-    const newWindow = { 
-      id, 
-      appId: app.id, 
-      t: app.title, 
-      icon: app.icon, 
-      ax: acc(app.color), 
-      b: q, 
-      sn: SN.QUAD, 
-      z: 1000, 
-      m: false, 
-      init,
-      tilePosition: init?.tilePosition, // Store tile position for animation
-      instanceCount: wns.filter(w => w.appId === app.id).length + 1 
-    };
-    
-    setW(ws => [...ws, newWindow]);
-    
-    setActId(id);
-    fz(id);
-    
-    // Publish events for Task Manager
-    eventBus.publish(TOPICS.WINDOW_OPEN, {
-      windowId: id,
-      appId: app.id,
-      appName: app.title,
-      minimized: false
-    });
-    
-    eventBus.publish(TOPICS.WINDOW_FOCUS, { windowId: id });
-  };
+  }, [primeDrag, handleDrag, endDrag]);
 
-  /**
-   * Execute window action (close, minimize, maximize, snap, drag)
-   */
-  const act = (id, type, p) => {
-    // Publish events for Task Manager before state update
-    if (type === "close") {
-      eventBus.publish(TOPICS.WINDOW_CLOSE, { windowId: id });
-    } else if (type === "min") {
-      eventBus.publish(TOPICS.WINDOW_MINIMIZE, { windowId: id });
-    } else if (type === "unmin") {
-      eventBus.publish(TOPICS.WINDOW_RESTORE, { windowId: id });
-    } else if (type === "max") {
-      eventBus.publish(TOPICS.WINDOW_MAXIMIZE, { windowId: id });
-    } else if (type === "unmax") {
-      eventBus.publish(TOPICS.WINDOW_RESTORE, { windowId: id });
-    }
-    
-    setW(ws => {
-      const updated = ws.map(w => {
-        if (w.id !== id) {
-          return w;
-        }
-        
-        if (type === "close") {
-          return WindowActions.closeWindow();
-        }
-        if (type === "min") {
-          return WindowActions.minimizeWindow(w);
-        }
-        if (type === "unmin") {
-          return WindowActions.unminimizeWindow(w);
-        }
-        if (type === "max") {
-          return WindowActions.maximizeWindow(w);
-        }
-        if (type === "unmax") {
-          return WindowActions.unmaximizeWindow(w);
-        }
-        
-        if (type === "snap") {
-          setActive(id);
-          return WindowActions.snapWindow(w, p);
-        }
-        
-        if (type === "snapQuad") {
-          setActive(id);
-          return WindowActions.snapQuadWindow(w, p);
-        }
-        
-        if (type === "snapToBounds") {
-          setActive(id);
-          // p is the bounds object {x, y, w, h}
-          const saveB = (w.sn === SN.NONE) ? w.b : (w.prevB || w.b);
-          return { ...w, prevB: saveB, prevSN: w.sn, sn: SN.NONE, b: p };
-        }
-        
-        if (type === "dbl") {
-          setActive(id);
-          return WindowActions.toggleMaximizeWindow(w);
-        }
-        
-        if (type === "resize") {
-          // Update window bounds during resize
-          return { ...w, b: p };
-        }
-        
-        if (type === "prime" || type === "dragStart") {
-          const me = ws.find(x => x.id === id) || w;
-          primeDrag(me);
-          snappedThisDrag.current = false;
-          return w;
-        }
-        
-        if (type === "drag") {
-          handleDrag(id, p);
-          return w;
-        }
-        
-        if (type === "dragEnd") {
-          const best = endDrag(p);
-          setTimeout(() => setActive(id), 0);
-          
-          if (best && !snappedThisDrag.current) {
-            snappedThisDrag.current = true;
-            if (best.type === 'snap')         { setTimeout(() => act(id, 'snap', best.payload), 0); }
-            if (best.type === 'snapQuad')     { setTimeout(() => act(id, 'snapQuad', best.payload), 0); }
-            if (best.type === 'snapToBounds') { setTimeout(() => act(id, 'snapToBounds', best.payload), 0); }
-            return w;
-          }
-          
-          const ghost = ghostFromPoint(w, p);
-          return WindowActions.floatWindow(w, ghost.x, ghost.y);
-        }
-        
-        return w;
-      }).filter(Boolean);
-      
-      // If a window was closed, also close its child windows
-      const closedWindowId = updated.length < ws.length ? ws.find(w => !updated.includes(w))?.id : null;
-      if (closedWindowId) {
-        return updated.filter(w => w.parentId !== closedWindowId);
-      }
-      
-      return updated;
-    });
-  };
+  const unmin = useCallback((id) => dispatch(actions.restoreWindow(id)), []);
 
-  /**
-   * Unminimize a window
-   */
-  const unmin = (id) => act(id, "unmin");
-
-  /**
-   * Open an About window as a child of parent window
-   */
-  const openAboutWindow = (parentWindowId, appTitle) => {
-    const aboutApp = APPS.find(a => a.id === 'about');
-    
-    if (!aboutApp) {
-      console.warn('About app not found in config');
-      return;
-    }
-
-    const id = uid();
-    const parentWindow = wns.find(w => w.id === parentWindowId);
-    
-    if (!parentWindow) {
-      console.warn('Parent window not found');
-      return;
-    }
-
-    // Position About window relative to parent - centered on top
-    const parentX = parentWindow.b.x;
-    const parentY = parentWindow.b.y;
-    const parentW = parentWindow.b.w;
-    const parentH = parentWindow.b.h;
-    
-    const aboutWidth = 400;
-    const aboutHeight = 300;
-    const aboutX = parentX + (parentW - aboutWidth) / 2;
-    const aboutY = parentY + (parentH - aboutHeight) / 2;
-
-    const newWindow = {
-      id,
-      appId: 'about',
-      t: `About ${appTitle}`,
-      icon: 'ℹ️',
-      ax: 'bg-slate-700',
-      b: { x: aboutX, y: aboutY, w: aboutWidth, h: aboutHeight },
-      sn: SN.NONE,
-      z: parentWindow.z + 1,
-      m: false,
-      init: { appTitle },
+  const openAboutWindow = useCallback((parentWindowId, appTitle) => {
+    const aboutApp = APPS.find((a) => a.id === 'about');
+    if (!aboutApp) return;
+    dispatch({
+      type: 'window/openChild',
+      app: aboutApp,
       parentId: parentWindowId,
-      isChildWindow: true
-    };
-
-    setW(ws => [...ws, newWindow]);
-    setActId(id);
-    fz(id);
-
-    eventBus.publish(TOPICS.WINDOW_OPEN, {
-      windowId: id,
-      appId: 'about',
-      appName: `About ${appTitle}`,
-      minimized: false,
-      parentId: parentWindowId
+      title: `About ${appTitle}`,
+      init: { appTitle },
     });
-  };
+  }, []);
+
+  // ---------- taskbar events ----------
+  useEffect(() => {
+    const offClick = eventBus.subscribe(
+      TOPICS.TASKBAR_WINDOW_CLICK,
+      ({ winId, isMinimized, isActive }) => {
+        if (isMinimized) dispatch(actions.restoreWindow(winId));
+        else if (isActive) dispatch(actions.minimizeWindow(winId));
+        else dispatch(actions.focusWindow(winId));
+      }
+    );
+
+    const offAction = eventBus.subscribe(
+      TOPICS.TASKBAR_WINDOW_ACTION,
+      ({ winId, action }) => {
+        if (action === 'activate') dispatch(actions.focusWindow(winId));
+        else act(winId, action);
+      }
+    );
+
+    return () => { offClick(); offAction(); };
+  }, [act]);
+
+  const setBadges = useCallback((updater) => {
+    const current = store.getState().badges;
+    const next = typeof updater === 'function' ? updater(current) : updater;
+    dispatch(Object.entries(next).map(([appId, count]) => actions.setBadge(appId, count)));
+  }, []);
 
   return {
-    // State
-    wns,
+    wns: windows,
     actId,
     badges,
     drag,
     animatingBadge,
-    
-    // Actions
     setActive,
     openA,
     act,
@@ -360,3 +166,15 @@ export function useWindowManager() {
     setBadges,
   };
 }
+
+/** Restore persisted tile sizes into the kernel at boot. */
+export function hydrateTileSizes() {
+  const saved = read('tileSizes', null);
+  if (saved && typeof saved === 'object') {
+    dispatch(
+      Object.entries(saved).map(([appId, size]) => actions.setTileSize(appId, size))
+    );
+  }
+}
+
+export { SN };
