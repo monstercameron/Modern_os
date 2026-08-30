@@ -1,131 +1,119 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  PRESETS,
+  DEFAULT_THEME,
+  applyTheme,
+  normalizeTheme,
+  SHADOW_LEVELS,
+} from './services/theme.js';
+import { read, write } from './services/persistence.js';
+import { dispatch, actions } from './kernel/index.js';
 
-// Define theme objects - exported for use in other components
+/**
+ * Theme state for React.
+ *
+ * The engine in services/theme.js owns the token schema and the CSS variable
+ * write; this provider owns which theme is current and persists it.
+ */
+
+/**
+ * Legacy shape kept for callers that only ever wanted the five colours.
+ * New code should read the full theme object or the CSS variables.
+ */
 export const themes = {
-  light: {
-    accent: '#0078d4', // Microsoft blue - professional and recognizable
-    background: '#f3f3f3', // Soft light gray - easier on eyes than pure white
-    surface: '#ffffff', // Pure white for contrast on panels
-    text: '#000000', // Pure black for maximum readability
-    border: '#d1d1d1', // Medium gray for subtle borders
-  },
-  dark: {
-    accent: '#60a5fa', // Lighter blue for dark backgrounds - better contrast
-    background: '#1a1a1a', // Deep charcoal - not too dark, reduces eye strain
-    surface: '#2d2d30', // Dark gray with warmth - distinguishable from background
-    text: '#e0e0e0', // Off-white - softer than pure white on dark
-    border: '#3e3e42', // Subtle border that's visible but not harsh
-  }
+  light: PRESETS.light.colors,
+  dark: PRESETS.dark.colors,
 };
 
-// Utility to get CSS variable string for theme property
 export const themeVar = (property) => `var(--theme-${property})`;
-
-// Utility to create inline styles with theme variables
-export const themeStyle = (...styles) => {
-  return styles.reduce((acc, style) => ({ ...acc, ...style }), {});
-};
-
-// Helper to create themed backgrounds
+export const themeStyle = (...styles) => styles.reduce((acc, s) => ({ ...acc, ...s }), {});
 export const themedBg = (property = 'surface') => ({ backgroundColor: themeVar(property) });
-
-// Helper to create themed text
 export const themedText = (property = 'text') => ({ color: themeVar(property) });
-
-// Helper to create themed borders
 export const themedBorder = (property = 'border') => ({ borderColor: themeVar(property) });
 
-const ThemeContext = createContext();
+const ThemeContext = createContext(null);
+
+const STORAGE_SLICE = 'theme';
 
 export function ThemeProvider({ children }) {
-  const [currentTheme, setCurrentTheme] = useState('dark');
-  const [customTheme, setCustomTheme] = useState(themes.dark);
+  const [theme, setThemeState] = useState(() => {
+    const saved = read(STORAGE_SLICE, null);
+    return normalizeTheme(saved || DEFAULT_THEME);
+  });
 
-  // Apply theme to CSS custom properties
+  // One write per change; every consumer reads CSS variables.
   useEffect(() => {
-    const theme = currentTheme === 'custom' ? customTheme : themes[currentTheme];
-    Object.entries(theme).forEach(([key, value]) => {
-      document.documentElement.style.setProperty(`--theme-${key}`, value);
-    });
-  }, [currentTheme, customTheme]);
+    applyTheme(theme);
+    write(STORAGE_SLICE, theme);
+    // The window gap is a theme token, so tiled windows need new rectangles.
+    dispatch(actions.retileAll());
+  }, [theme]);
 
-  const setTheme = (themeName) => {
-    if (themeName === 'custom') {
-      console.warn('Use updateCustomTheme() to set custom themes');
+  /** Replace the theme wholesale (a preset, or an imported one). */
+  const setTheme = useCallback((next) => {
+    if (typeof next === 'string') {
+      const preset = PRESETS[next];
+      if (!preset) {
+        console.warn(`[theme] unknown preset "${next}"`);
+        return;
+      }
+      setThemeState(normalizeTheme(preset));
       return;
     }
-    if (!themes[themeName]) {
-      console.error(`Theme "${themeName}" not found`);
-      return;
-    }
-    setCurrentTheme(themeName);
-  };
+    setThemeState(normalizeTheme(next));
+  }, []);
 
-  const updateCustomTheme = (updates) => {
-    const newTheme = { ...customTheme, ...updates };
-    setCustomTheme(newTheme);
-    setCurrentTheme('custom');
-  };
+  /** Patch part of the theme — colors merge, everything else replaces. */
+  const updateTheme = useCallback((patch) => {
+    setThemeState((prev) =>
+      normalizeTheme({
+        ...prev,
+        ...patch,
+        name: patch.name ?? (prev.name.endsWith('(edited)') ? prev.name : `${prev.name} (edited)`),
+        colors: { ...prev.colors, ...(patch.colors || {}) },
+      })
+    );
+  }, []);
 
-  const resetTheme = () => {
-    setCurrentTheme('dark');
-    setCustomTheme(themes.dark);
-  };
+  /** Set one colour token. */
+  const setColor = useCallback((key, value) => {
+    updateTheme({ colors: { [key]: value } });
+  }, [updateTheme]);
 
-  const toggleLightDark = () => {
-    setCurrentTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
+  const resetTheme = useCallback(() => setThemeState(normalizeTheme(DEFAULT_THEME)), []);
 
-  const applyPreset = (presetTheme) => {
-    if (typeof presetTheme === 'string') {
-      setTheme(presetTheme);
-    } else if (typeof presetTheme === 'object') {
-      updateCustomTheme(presetTheme);
-    }
-  };
+  const toggleLightDark = useCallback(() => {
+    setThemeState((prev) => normalizeTheme(prev.mode === 'light' ? PRESETS.dark : PRESETS.light));
+  }, []);
 
-  // Get a specific theme color by key
-  const getColor = (key) => {
-    const activeTheme = currentTheme === 'custom' ? customTheme : themes[currentTheme];
-    return activeTheme[key];
-  };
+  const getColor = useCallback((key) => theme.colors[key], [theme]);
 
-  // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
-    // Current state
-    currentTheme,
-    theme: currentTheme === 'custom' ? customTheme : themes[currentTheme],
-    
-    // Theme setters
-    setTheme,
-    updateCustomTheme,
-    resetTheme,
-    applyPreset,
-    
-    // Toggles
-    toggleLightDark,
-    
-    // Status flags
-    isLight: currentTheme === 'light',
-    isDark: currentTheme === 'dark',
-    isCustom: currentTheme === 'custom',
-    
-    // Utilities
-    getColor,
-    themes, // Access to all theme definitions
-  }), [currentTheme, customTheme]);
+    theme,
+    currentTheme: theme.mode,
+    presets: PRESETS,
+    shadowLevels: SHADOW_LEVELS,
 
-  return (
-    <ThemeContext.Provider value={value}>
-      {children}
-    </ThemeContext.Provider>
-  );
+    setTheme,
+    updateTheme,
+    setColor,
+    resetTheme,
+    toggleLightDark,
+
+    // Kept for existing callers.
+    applyPreset: setTheme,
+    updateCustomTheme: updateTheme,
+    isLight: theme.mode === 'light',
+    isDark: theme.mode === 'dark',
+    getColor,
+    themes,
+  }), [theme, setTheme, updateTheme, setColor, resetTheme, toggleLightDark, getColor]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
+  if (!context) throw new Error('useTheme must be used within a ThemeProvider');
   return context;
 }

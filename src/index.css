@@ -1,15 +1,139 @@
 @import "tailwindcss";
 
+/*
+ * Boot values. services/theme.js overwrites all of these on the document root
+ * as soon as the ThemeProvider mounts; they exist so the first paint is not
+ * unstyled.
+ */
 :root {
-  /* Theme variables - Dark mode by default */
   --theme-accent: #60a5fa;
+  --theme-accent-text: #0b1220;
+  --theme-accent-hover: #7ab4fb;
+  --theme-accent-soft: color-mix(in srgb, #60a5fa 18%, transparent);
   --theme-background: #1a1a1a;
   --theme-surface: #2d2d30;
+  --theme-surface-alt: #232326;
   --theme-text: #e0e0e0;
+  --theme-text-muted: #9a9aa2;
   --theme-border: #3e3e42;
+  --theme-danger: #f43f5e;
+  --theme-success: #22c55e;
+  --theme-overlay: rgba(0, 0, 0, 0.55);
 
-  /* Derived theme colors */
-  --theme-accent-hover: color-mix(in srgb, var(--theme-accent) 80%, white);
-  --theme-surface-hover: color-mix(in srgb, var(--theme-surface) 120%, white);
-  --theme-text-muted: color-mix(in srgb, var(--theme-text) 70%, var(--theme-background));
+  --theme-radius: 0px;
+  --theme-radius-sm: 0px;
+  --theme-border-width: 1px;
+  --theme-border-width-focus: 1px;
+  --theme-tile-gap: 8px;
+  --theme-window-gap: 8px;
+
+  --theme-shadow: 0 2px 6px rgba(0, 0, 0, 0.24), 0 8px 24px rgba(0, 0, 0, 0.2);
+
+  --theme-surface-hover: color-mix(in srgb, var(--theme-surface) 88%, var(--theme-text));
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * App theme bridge
+ *
+ * The apps were written against fixed Tailwind neutrals (bg-white,
+ * text-slate-500, border-slate-300 and friends), which is why they stayed
+ * light while the shell went dark. Rather than rewrite forty app files at
+ * once, every app is rendered inside [data-app-surface] and these rules remap
+ * the neutral palette onto theme tokens.
+ *
+ * Brand colours are deliberately untouched: a red Email tile stays red.
+ * As apps are converted to read tokens directly, their entries here can go.
+ * ---------------------------------------------------------------------------
+ */
+[data-app-surface] {
+  background-color: var(--theme-surface);
+  color: var(--theme-text);
+}
+
+[data-app-surface] .bg-white,
+[data-app-surface] .bg-slate-50,
+[data-app-surface] .bg-gray-50 {
+  background-color: var(--theme-surface) !important;
+}
+
+[data-app-surface] .bg-slate-100,
+[data-app-surface] .bg-slate-200,
+[data-app-surface] .bg-gray-100,
+[data-app-surface] .bg-gray-200,
+[data-app-surface] .bg-gray-300,
+[data-app-surface] .bg-gray-600 {
+  background-color: var(--theme-surface-alt) !important;
+}
+
+[data-app-surface] .bg-slate-700,
+[data-app-surface] .bg-slate-800,
+[data-app-surface] .bg-slate-900,
+[data-app-surface] .bg-zinc-700 {
+  background-color: var(--theme-background) !important;
+}
+
+[data-app-surface] .text-black,
+[data-app-surface] .text-slate-900,
+[data-app-surface] .text-gray-900,
+[data-app-surface] .text-slate-800,
+[data-app-surface] .text-slate-700 {
+  color: var(--theme-text) !important;
+}
+
+[data-app-surface] .text-slate-300,
+[data-app-surface] .text-slate-400,
+[data-app-surface] .text-slate-500,
+[data-app-surface] .text-slate-600,
+[data-app-surface] .text-gray-500,
+[data-app-surface] .text-gray-600 {
+  color: var(--theme-text-muted) !important;
+}
+
+[data-app-surface] .border-slate-200,
+[data-app-surface] .border-slate-300,
+[data-app-surface] .border-slate-400,
+[data-app-surface] .border-slate-500,
+[data-app-surface] .border-slate-900,
+[data-app-surface] .border-gray-200,
+[data-app-surface] .border-gray-300,
+[data-app-surface] .border-black {
+  border-color: var(--theme-border) !important;
+}
+
+[data-app-surface] .divide-slate-200 > * + *,
+[data-app-surface] .divide-gray-200 > * + * {
+  border-color: var(--theme-border) !important;
+}
+
+/* Inputs inside apps follow the theme rather than the user agent. */
+[data-app-surface] input:not([type='range']):not([type='checkbox']):not([type='radio']),
+[data-app-surface] textarea,
+[data-app-surface] select {
+  background-color: var(--theme-surface-alt);
+  color: var(--theme-text);
+  border-color: var(--theme-border);
+}
+
+[data-app-surface] ::placeholder {
+  color: var(--theme-text-muted);
+}
+
+/* Shell chrome picks up the configurable shape tokens. */
+[data-window] {
+  border-radius: var(--theme-radius);
+  box-shadow: var(--theme-shadow);
+}
+
+[data-tile] {
+  border-radius: var(--theme-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

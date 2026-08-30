@@ -10,6 +10,7 @@ import { useWindowState } from "../hooks/useWindowState.js";
 import { useContextMenu } from "../hooks/useContextMenu.js";
 import { CONTEXT_TYPES, MENU_ACTIONS } from "../utils/contextMenuStateMachine.js";
 import eventBus, { TOPICS } from "../utils/eventBus.js";
+import { useKernel, select } from "../kernel/index.js";
 
 // Resize handle component
 const ResizeHandle = memo(function ResizeHandle({ position, onResizeStart, disabled }) {
@@ -162,30 +163,34 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   
   // Use state machine to understand window state
   const windowState = useWindowState(win);
+
+  // Focus-follows-mouse, a desktop-wide preference.
+  const focusFollowsMouse = useKernel(select.focusFollowsMouse);
   
   // Min/max size constraints
   const MIN_WIDTH = 200;
   const MIN_HEIGHT = 150;
 
-  const borderCls = win.sn === SN.FULL
-    ? "border-0"
-    : active
-      ? "border-6"
-      : hv
-        ? "border-2"
-        : "border";
+  // Border width comes from the theme. The focused window uses the thicker
+  // focus width, which the engine only widens when the base border is more
+  // than a hairline — at 1px the accent colour carries the emphasis instead.
+  const borderCls = "";
 
-  const shadowCls = (win.sn === SN.FULL || win.sn === SN.LEFT || win.sn === SN.RIGHT || win.sn === SN.TOP || win.sn === SN.BOTTOM || win.sn === SN.QUAD)
-    ? ""
-    : "shadow-lg";
+  const shadowCls = "";
 
   const borderStyle = win.sn === SN.FULL
-    ? {}
-    : active
-      ? { borderColor: 'var(--theme-accent)' }
-      : hv
-        ? { borderColor: 'var(--theme-text)' }
-        : { borderColor: 'var(--theme-border)' };
+    ? { borderWidth: 0 }
+    : {
+        borderStyle: 'solid',
+        borderWidth: active
+          ? 'var(--theme-border-width-focus)'
+          : 'var(--theme-border-width)',
+        borderColor: active
+          ? 'var(--theme-accent)'
+          : hv
+            ? 'var(--theme-text-muted)'
+            : 'var(--theme-border)',
+      };
 
   // Spring animation config for snappy feel (<100ms)
   const springConfig = { type: 'spring', stiffness: 400, damping: 30, mass: 0.8 };
@@ -297,6 +302,7 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   const baseStyle = useMemo(() => ({
     zIndex: win.z,
     boxSizing: 'border-box',
+    backgroundColor: 'var(--theme-surface)',
     ...borderStyle
   }), [win.z, borderStyle]);
 
@@ -325,11 +331,13 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       top: win.b.y,
       width: win.b.w,
       height: win.b.h,
-      scale: 1,
+      // The focused window lifts very slightly. Enough to read as "this one",
+      // small enough that a tiled layout still looks like a grid.
+      scale: active && win.sn !== SN.FULL ? 1.006 : 1,
       rotateY: 0
     };
     return style;
-  }, [win.b.x, win.b.y, win.b.w, win.b.h, win.id, win.sn]);
+  }, [win.b.x, win.b.y, win.b.w, win.b.h, win.id, win.sn, active]);
 
   const divRef = useRef(null);
 
@@ -344,8 +352,12 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
   return (
     <motion.div
       ref={divRef}
-      className={`absolute bg-white ${shadowCls} ${borderCls}`}
+      className={`absolute ${shadowCls} ${borderCls}`}
       style={baseStyle}
+      data-window
+      data-window-id={win.id}
+      data-focused={active ? 'true' : 'false'}
+      data-floating={win.floating ? 'true' : 'false'}
       initial={initialPosition || animateStyle}
       animate={animateValue}
       transition={dragCur ? undefined : (animatingFromTile ? { 
@@ -417,7 +429,13 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
       dragElastic={0}
       dragListener={false}
       dragControls={controls}
-      onMouseEnter={() => setHv(true)}
+      onMouseEnter={() => {
+        setHv(true);
+        // Focus follows the mouse, the way a tiling desktop behaves. Skipped
+        // while a drag or resize is in flight so passing under another window
+        // does not steal focus mid-gesture.
+        if (focusFollowsMouse && !active && !resizing) setActive(win.id);
+      }}
       onMouseLeave={() => setHv(false)}
       onClick={handleClick}
       onDragStart={handleDragStart}

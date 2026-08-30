@@ -36,9 +36,12 @@ export function WorkspaceSwitcher() {
           onClick={() => dispatch(actions.switchWorkspace(ws.index))}
           className="relative w-6 h-6 grid place-items-center text-[10px] font-medium transition-colors"
           style={{
-            color: ws.current ? '#fff' : 'rgba(255,255,255,0.55)',
+            // Theme tokens rather than fixed white, so the indicator stays
+            // legible on a light taskbar.
+            color: ws.current ? 'var(--theme-accent-text)' : 'var(--theme-text-muted)',
             backgroundColor: ws.current ? 'var(--theme-accent)' : 'transparent',
-            border: `1px solid ${ws.current ? 'var(--theme-accent)' : 'rgba(255,255,255,0.2)'}`,
+            border: `1px solid ${ws.current ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
+            borderRadius: 'var(--theme-radius-sm)',
           }}
         >
           {ws.index}

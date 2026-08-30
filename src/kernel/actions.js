@@ -36,6 +36,9 @@ export const ActionTypes = {
   TILE_SET_SIZE: 'tile/setSize',
   TILE_EDIT_MODE: 'tile/editMode',
 
+  // Preferences
+  PREFS_SET: 'prefs/set',
+
   // Badges
   BADGE_SET: 'badge/set',
   BADGE_CLEAR: 'badge/clear',
@@ -94,6 +97,9 @@ export const setTileSize = (appId, size) => ({ type: ActionTypes.TILE_SET_SIZE, 
 export const setTileEditMode = (enabled) => ({ type: ActionTypes.TILE_EDIT_MODE, enabled });
 
 // ---------- Badges ----------
+
+/** Set a desktop preference, e.g. focusFollowsMouse. */
+export const setPref = (key, value) => ({ type: ActionTypes.PREFS_SET, key, value });
 
 export const setBadge = (appId, count) => ({ type: ActionTypes.BADGE_SET, appId, count });
 export const clearBadge = (appId) => ({ type: ActionTypes.BADGE_CLEAR, appId });

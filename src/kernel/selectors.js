@@ -31,6 +31,8 @@ export const activeWindowId = (state) => state.activeId;
 export const tileSizes = (state) => state.tiles.sizes;
 export const tileEditMode = (state) => state.tiles.editMode;
 export const badges = (state) => state.badges;
+export const prefs = (state) => state.prefs;
+export const focusFollowsMouse = (state) => state.prefs.focusFollowsMouse;
 export const animatingBadge = (state) => state.animatingBadge;
 
 /** Every window, across all workspaces. */

@@ -1,10 +1,47 @@
 import React, { useState } from "react";
-import { useTheme, themes } from "../ThemeContext.jsx";
+import { useTheme } from "../ThemeContext.jsx";
+import { dispatch, actions, useKernel, select } from "../kernel/index.js";
 import { useSettings } from "../hooks/useSettings.jsx";
 import { Sun, Moon, RefreshCw, Download, Upload, Trash2, AlertTriangle } from "lucide-react";
 
+
+/** Colour tokens exposed in Settings, in the order they are shown. */
+const COLOR_TOKENS = [
+  ['accent', 'Accent Color'],
+  ['accentText', 'Accent Text'],
+  ['background', 'Background'],
+  ['surface', 'Surface'],
+  ['surfaceAlt', 'Surface (alt)'],
+  ['text', 'Text'],
+  ['textMuted', 'Muted Text'],
+  ['border', 'Borders'],
+];
+
+/** A labelled slider for the numeric shape tokens. */
+function RangeSetting({ label, value, min, max, onChange, hint }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-sm font-medium">{label}</span>
+        <span className="text-xs text-slate-500 tabular-nums">{value}px</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        aria-label={label}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full"
+      />
+      {hint && <div className="text-xs text-slate-500 mt-1">{hint}</div>}
+    </div>
+  );
+}
+
 export function SettingsApp() {
-  const { currentTheme, theme, applyPreset, updateCustomTheme, toggleLightDark, resetTheme, isLight, isDark } = useTheme();
+  const { theme, presets, shadowLevels, setTheme, updateTheme, setColor, toggleLightDark, resetTheme, isLight } = useTheme();
+  const focusFollowsMouse = useKernel(select.focusFollowsMouse);
   const { settings, updateSetting, resetSettings, resetSection, exportSettings, importSettings } = useSettings();
   const [activeSection, setActiveSection] = useState("Personalization");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -90,16 +127,14 @@ export function SettingsApp() {
                   <button
                     onClick={resetTheme}
                     className="flex items-center gap-2 px-4 py-2 border border-slate-300 hover:bg-slate-50 transition-colors rounded"
-                    title="Reset to default dark theme"
+                    title="Reset to the default dark theme"
                   >
                     <RefreshCw size={18} />
                     <span>Reset Theme</span>
                   </button>
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.accent }}></div>
-                    <span className="text-sm text-slate-600">
-                      {currentTheme === 'light' ? 'Light Mode' : currentTheme === 'dark' ? 'Dark Mode' : 'Custom Theme'}
-                    </span>
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.colors.accent }}></div>
+                    <span className="text-sm text-slate-600">{theme.name}</span>
                   </div>
                 </div>
               </div>
@@ -107,70 +142,104 @@ export function SettingsApp() {
               <div>
                 <h3 className="text-lg font-medium mb-3">Colors</h3>
                 <div className="space-y-3">
-                  <ColorPicker
-                    label="Accent Color"
-                    value={theme.accent}
-                    onChange={(value) => updateCustomTheme({ accent: value })}
-                  />
-                  <ColorPicker
-                    label="Background"
-                    value={theme.background}
-                    onChange={(value) => updateCustomTheme({ background: value })}
-                  />
-                  <ColorPicker
-                    label="Surface"
-                    value={theme.surface}
-                    onChange={(value) => updateCustomTheme({ surface: value })}
-                  />
-                  <ColorPicker
-                    label="Text"
-                    value={theme.text}
-                    onChange={(value) => updateCustomTheme({ text: value })}
-                  />
-                  <ColorPicker
-                    label="Borders"
-                    value={theme.border}
-                    onChange={(value) => updateCustomTheme({ border: value })}
-                  />
+                  {COLOR_TOKENS.map(([key, label]) => (
+                    <ColorPicker
+                      key={key}
+                      label={label}
+                      value={theme.colors[key]}
+                      onChange={(value) => setColor(key, value)}
+                    />
+                  ))}
                 </div>
               </div>
 
               <div>
+                <h3 className="text-lg font-medium mb-3">Shape &amp; Depth</h3>
+                <div className="space-y-4">
+                  <RangeSetting
+                    label="Corner radius"
+                    value={theme.radius}
+                    min={0}
+                    max={24}
+                    onChange={(v) => updateTheme({ radius: v })}
+                  />
+                  <RangeSetting
+                    label="Border width"
+                    value={theme.borderWidth}
+                    min={0}
+                    max={6}
+                    hint="A focused window thickens its border only above 1px"
+                    onChange={(v) => updateTheme({ borderWidth: v })}
+                  />
+                  <RangeSetting
+                    label="Tile gap"
+                    value={theme.tileGap}
+                    min={0}
+                    max={24}
+                    onChange={(v) => updateTheme({ tileGap: v })}
+                  />
+                  <RangeSetting
+                    label="Window gap"
+                    value={theme.windowGap}
+                    min={0}
+                    max={32}
+                    hint="Space between tiled windows"
+                    onChange={(v) => updateTheme({ windowGap: v })}
+                  />
+                  <div>
+                    <div className="text-sm font-medium mb-2">Shadow</div>
+                    <div className="flex gap-2 flex-wrap">
+                      {shadowLevels.map((level) => (
+                        <button
+                          key={level}
+                          onClick={() => updateTheme({ shadow: level })}
+                          className="px-3 py-1.5 text-sm border rounded capitalize transition-colors"
+                          style={{
+                            borderColor: theme.shadow === level ? 'var(--theme-accent)' : 'var(--theme-border)',
+                            backgroundColor: theme.shadow === level ? 'var(--theme-accent)' : 'transparent',
+                            color: theme.shadow === level ? 'var(--theme-accent-text)' : 'var(--theme-text)',
+                          }}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-medium mb-3">Behaviour</h3>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={focusFollowsMouse}
+                    onChange={(e) => dispatch(actions.setPref('focusFollowsMouse', e.target.checked))}
+                  />
+                  <span className="text-sm">Focus follows mouse</span>
+                </label>
+              </div>
+
+              <div>
                 <h3 className="text-lg font-medium mb-3">Theme Presets</h3>
-                <p className="text-xs text-slate-500 mb-3">Click any preset to instantly apply it</p>
+                <p className="text-xs text-slate-500 mb-3">Click any preset to apply it</p>
                 <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { name: "Light", theme: 'light', description: "Clean & professional" },
-                    { name: "Dark", theme: 'dark', description: "Default dark theme" },
-                    { name: "Midnight Blue", colors: { accent: "#1e40af", background: "#0f1419", surface: "#1e293b", text: "#e2e8f0", border: "#475569" }, description: "Deep blue tones" },
-                    { name: "Purple Haze", colors: { accent: "#a855f7", background: "#1a103d", surface: "#2d1b69", text: "#f3f4f6", border: "#6b46c1" }, description: "Rich purple" },
-                    { name: "Forest Green", colors: { accent: "#10b981", background: "#064e3b", surface: "#065f46", text: "#d1fae5", border: "#047857" }, description: "Natural green" },
-                    { name: "Sunset Orange", colors: { accent: "#f97316", background: "#431407", surface: "#7c2d12", text: "#fed7aa", border: "#ea580c" }, description: "Warm orange" },
-                  ].map(preset => (
+                  {Object.entries(presets).map(([key, preset]) => (
                     <button
-                      key={preset.name}
-                      onClick={() => applyPreset(preset.theme || preset.colors)}
-                      className="p-3 border border-slate-300 hover:border-slate-400 text-left rounded transition-all hover:shadow-md group relative"
-                      title={preset.description}
+                      key={key}
+                      onClick={() => setTheme(key)}
+                      className="p-3 border border-slate-300 hover:border-slate-400 text-left transition-all hover:shadow-md"
+                      style={{ borderRadius: preset.radius + 'px' }}
+                      data-preset={key}
                     >
                       <div className="font-medium mb-1">{preset.name}</div>
-                      {preset.description && (
-                        <div className="text-xs text-slate-500 mb-2">{preset.description}</div>
-                      )}
+                      <div className="text-xs text-slate-500 mb-2">
+                        {preset.radius}px radius &middot; {preset.borderWidth}px border &middot; {preset.shadow} shadow
+                      </div>
                       <div className="flex gap-1 mt-2">
-                        {preset.theme ? (
-                          <>
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: themes[preset.theme].accent }}></div>
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: themes[preset.theme].surface }}></div>
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: themes[preset.theme].background }}></div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.colors.accent }}></div>
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.colors.surface }}></div>
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.colors.background }}></div>
-                          </>
-                        )}
+                        <div className="w-4 h-4" style={{ backgroundColor: preset.colors.accent }}></div>
+                        <div className="w-4 h-4" style={{ backgroundColor: preset.colors.surface }}></div>
+                        <div className="w-4 h-4" style={{ backgroundColor: preset.colors.background }}></div>
                       </div>
                     </button>
                   ))}
@@ -179,7 +248,7 @@ export function SettingsApp() {
             </div>
           </div>
         );
-      
+
       case "System":
         return (
           <div className="space-y-6">

@@ -34,6 +34,8 @@ export const initialState = {
   launcherOpen: true,
   tiles: { sizes: {}, editMode: false },
   badges: { messages: 5, email: 3 },
+  /** Desktop preferences that are not themeing. */
+  prefs: { focusFollowsMouse: true },
   animatingBadge: null,
 };
 
@@ -76,6 +78,18 @@ function tilingArea() {
 }
 
 /**
+ * Spacing between tiled windows, read from the theme so it stays configurable.
+ * Falls back to the layout default when there is no document (tests, SSR).
+ */
+function windowGap() {
+  if (typeof document === 'undefined') return bsp.GAP;
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--theme-window-gap');
+  const parsed = parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : bsp.GAP;
+}
+
+/**
  * A window participates in tiling when it is not floating, not minimized and
  * not fullscreen. Fullscreen keeps its place in the tree but stops being laid
  * out, so leaving fullscreen drops it back where it was.
@@ -97,7 +111,7 @@ function retile(state, workspace) {
   // gets inserted next to whatever is focused.
   for (const id of tiledIds) {
     if (!bsp.has(tree, id)) {
-      const rects = bsp.computeBounds(tree, tilingArea());
+      const rects = bsp.computeBounds(tree, tilingArea(), windowGap());
       const target = tiledIds.has(state.activeId) && state.activeId !== id
         ? state.activeId
         : null;
@@ -105,7 +119,7 @@ function retile(state, workspace) {
     }
   }
 
-  const bounds = bsp.computeBounds(tree, tilingArea());
+  const bounds = bsp.computeBounds(tree, tilingArea(), windowGap());
   const windows = state.windows.map((w) => {
     if (w.ws !== workspace || !isTiled(w)) return w;
     const b = bounds.get(w.id);
@@ -540,6 +554,9 @@ export function reducer(state, action) {
 
     case T.BADGE_CLEAR:
       return { ...state, badges: clearBadgeState(state.badges, action.appId) };
+
+    case T.PREFS_SET:
+      return { ...state, prefs: { ...state.prefs, [action.key]: action.value } };
 
     case T.BADGE_ANIMATE:
       return { ...state, animatingBadge: action.appId };

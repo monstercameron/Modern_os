@@ -23,7 +23,10 @@ const WindowWrapper = memo(function WindowWrapper({ win, active, setActive, act,
   return (
     <Win win={win} active={active} setActive={setActive} on={handleAction} app={app}>
       <AppErrorBoundary appId={win.appId} appName={win.t}>
-        <div className="w-full h-full bg-white">
+        {/* data-app-surface is what the theme bridge in index.css hangs off,
+            so an app inherits the theme even when it hardcodes Tailwind
+            neutrals internally. */}
+        <div className="w-full h-full" data-app-surface data-app-id={win.appId}>
           <AppComponent init={win.init} />
         </div>
       </AppErrorBoundary>
