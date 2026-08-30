@@ -119,6 +119,36 @@
   color: var(--theme-text-muted);
 }
 
+/*
+ * App layout responds to the *window*, not the viewport, because a tiled
+ * window can be a quarter of the screen while the screen is wide. Container
+ * queries on [data-app-frame] are what make that work.
+ */
+[data-app-frame] .app-sidebar {
+  width: 180px;
+}
+
+@container (max-width: 560px) {
+  [data-app-frame] .app-body {
+    flex-direction: column;
+  }
+  [data-app-frame] .app-sidebar {
+    width: 100%;
+    max-height: 34%;
+    border-right: 0;
+    border-bottom: 1px solid var(--theme-border);
+  }
+  [data-app-frame] .app-cols {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@container (max-width: 380px) {
+  [data-app-frame] .app-hide-sm {
+    display: none !important;
+  }
+}
+
 /* Shell chrome picks up the configurable shape tokens. */
 [data-window] {
   border-radius: var(--theme-radius);

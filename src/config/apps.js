@@ -34,41 +34,18 @@ import {
 } from "lucide-react";
 
 import { BrowserApp } from "../apps/BrowserApp.jsx";
-import { TextApp } from "../apps/TextApp.jsx";
 import { AboutApp } from "../apps/AboutApp.jsx";
-import { VoiceApp } from "../apps/VoiceApp.jsx";
-import { FilesApp } from "../apps/FilesApp.jsx";
-import { MusicApp } from "../apps/MusicApp.jsx";
-import { VideoApp } from "../apps/VideoApp.jsx";
-import { MessagesApp } from "../apps/MessagesApp.jsx";
-import { EmailApp } from "../apps/EmailApp.jsx";
 import { TerminalApp } from "../apps/TerminalApp.jsx";
 import { SettingsApp } from "../apps/SettingsApp.jsx";
 import { StubApp } from "../apps/StubApp.jsx";
-import { CalendarApp } from "../apps/CalendarApp.jsx";
-import { NotesApp } from "../apps/NotesApp.jsx";
-import { TasksApp } from "../apps/TasksApp.jsx";
-import { CalculatorApp } from "../apps/CalculatorApp.jsx";
-import { PDFViewerApp } from "../apps/PDFViewerApp.jsx";
-import { PhotosApp } from "../apps/PhotosApp.jsx";
-import { CameraApp } from "../apps/CameraApp.jsx";
-import { AudioRecorderApp } from "../apps/AudioRecorderApp.jsx";
-import { PodcastApp } from "../apps/PodcastApp.jsx";
-import { ActivityMonitorApp } from "../apps/ActivityMonitorApp.jsx";
-import { DiskUtilityApp } from "../apps/DiskUtilityApp.jsx";
-import { WeatherApp } from "../apps/WeatherApp.jsx";
-import { MapsApp } from "../apps/MapsApp.jsx";
-import { ChatApp } from "../apps/ChatApp.jsx";
-import { VideoCallApp } from "../apps/VideoCallApp.jsx";
-import { ContactsApp } from "../apps/ContactsApp.jsx";
-import { CodeEditorApp } from "../apps/CodeEditorApp.jsx";
-import { DatabaseApp } from "../apps/DatabaseApp.jsx";
-import { DrawingApp } from "../apps/DrawingApp.jsx";
-import { PresentationApp } from "../apps/PresentationApp.jsx";
-import { ClockApp } from "../apps/ClockApp.jsx";
-import { NewsApp } from "../apps/NewsApp.jsx";
 import { TileConfiguratorApp } from "../apps/TileConfiguratorApp.jsx";
 import { TaskManagerApp } from "../apps/TaskManagerApp.jsx";
+
+// Redesigned demo apps: responsive, themed, and each with a `~` console.
+import { EmailApp, MessagesApp, ChatApp, ContactsApp, VideoCallApp } from "../features/apps/CommunicationApps.jsx";
+import { TasksApp, NotesApp, CalendarApp, TextApp, PresentationApp } from "../features/apps/ProductivityApps.jsx";
+import { MusicApp, PhotosApp, VideoApp, VoiceApp, AudioRecorderApp, CameraApp, DrawingApp, PodcastApp } from "../features/apps/MediaApps.jsx";
+import { FilesApp, ActivityMonitorApp, DiskUtilityApp, CalculatorApp, WeatherApp, MapsApp, NewsApp, DatabaseApp, ClockApp, CodeEditorApp, PDFViewerApp } from "../features/apps/SystemApps.jsx";
 import { getManifest } from "./manifests.js";
 
 export const APPS = [
