@@ -18,6 +18,9 @@ export const ActionTypes = {
   WINDOW_TOGGLE_MAXIMIZE: 'window/toggleMaximize',
   WINDOW_SNAP: 'window/snap',
   WINDOW_RESIZE_TILE: 'window/resizeTile',
+  WINDOW_FOCUS_DIRECTION: 'window/focusDirection',
+  WINDOW_MOVE_DIRECTION: 'window/moveDirection',
+  RESIZE_MODE_SET: 'ui/resizeMode',
   WINDOW_SNAP_QUAD: 'window/snapQuad',
   WINDOW_SET_BOUNDS: 'window/setBounds',
   WINDOW_MOVE_TO: 'window/moveTo',
@@ -69,6 +72,15 @@ export const snapWindowQuad = (id, quadIndex) => ({ type: ActionTypes.WINDOW_SNA
 
 /** Move the divider a tiled window shares. direction is left|right|up|down. */
 export const resizeTile = (id, direction) => ({ type: ActionTypes.WINDOW_RESIZE_TILE, id, direction });
+
+/** Focus the window in a direction. direction is left|right|up|down. */
+export const focusDirection = (direction) => ({ type: ActionTypes.WINDOW_FOCUS_DIRECTION, direction });
+
+/** Swap a tiled window with its neighbour in a direction. */
+export const moveWindowDirection = (id, direction) => ({ type: ActionTypes.WINDOW_MOVE_DIRECTION, id, direction });
+
+/** Latch the keyboard into resize mode, where bare arrows size the focus. */
+export const setResizeMode = (on) => ({ type: ActionTypes.RESIZE_MODE_SET, on });
 
 /** Explicit bounds, used by snap zones and by resize. */
 export const setWindowBounds = (id, bounds, { snapped = false } = {}) => ({

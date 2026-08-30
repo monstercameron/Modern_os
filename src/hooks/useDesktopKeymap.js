@@ -81,32 +81,75 @@ export function useDesktopKeymap() {
     );
 
     /*
-     * The arrows are placement-aware.
+     * The arrows move focus.
      *
-     * A floating window snaps to a half of the screen. A tiled one moves the
-     * divider it shares with its neighbour, which is what resizing means
-     * inside a layout -- snapping it would have to eject it from the tree to
-     * give it those bounds, so pressing an arrow silently turned a tiled
-     * window into a floating one. The arrows arrange what you have; $mod+V is
-     * the key that changes how a window is managed.
+     * This is the most-pressed key in a tiling desktop, and it had been given
+     * to snapping and then to resizing -- neither of which is what an arrow
+     * means when you are looking at a grid of windows. The neighbour is
+     * chosen geometrically, so it works the same for tiled and floating
+     * windows.
+     *
+     * Adding Alt moves the window instead of the focus, which is the meaning
+     * Alt already carries: $mod+Alt+N moves a window to workspace N. A tiled
+     * window trades places with its neighbour; a floating one snaps, since a
+     * window outside the layout has no neighbour to trade with.
      */
-    const arrow = (direction, snapType) => () => {
-      const state = store.getState();
-      const win = state.windows.find((w) => w.id === state.activeId);
-      if (!win) return;
-      if (win.floating) dispatch(actions.snapWindow(win.id, snapType));
-      else dispatch(actions.resizeTile(win.id, direction));
+    const DIRECTIONS = [['left', SN.LEFT], ['right', SN.RIGHT], ['up', SN.TOP], ['down', SN.BOTTOM]];
+
+    for (const [direction, snapType] of DIRECTIONS) {
+      bindings.push([
+        `$mod+${direction}`,
+        () => dispatch(actions.focusDirection(direction)),
+        { description: `Focus the window ${direction}`, owner: 'desktop' },
+      ]);
+      bindings.push([
+        `$mod+alt+${direction}`,
+        () => {
+          const state = store.getState();
+          const win = state.windows.find((w) => w.id === state.activeId);
+          if (!win) return;
+          if (win.floating) dispatch(actions.snapWindow(win.id, snapType));
+          else dispatch(actions.moveWindowDirection(win.id, direction));
+        },
+        { description: `Move the window ${direction}`, owner: 'desktop' },
+      ]);
+    }
+
+    /*
+     * Resize is a mode, the way it is in i3.
+     *
+     * There is no free chord left for it -- $mod is Ctrl+Shift, so the Shift
+     * row does not exist and Alt is spoken for -- and resizing is a thing you
+     * do in bursts anyway. $mod+R latches, bare arrows size the focused
+     * window, Escape or Enter leaves. The RESIZE scope shadows the desktop
+     * and owns the keyboard while it is up, so the arrows work even when the
+     * caret is sitting in an app's text field.
+     */
+    const setResizeMode = (on) => {
+      dispatch(actions.setResizeMode(on));
+      if (on) keymap.pushScope(SCOPES.RESIZE);
+      else keymap.popScope(SCOPES.RESIZE);
     };
 
+    // Not $mod+R: Ctrl+Shift+R is the browser's hard reload, and it was also
+    // sitting under a stray settings-reset listener. S for size.
+    bindings.push(['$mod+s', () => setResizeMode(!store.getState().resizeMode),
+      { description: 'Resize mode: arrows size, Esc leaves', owner: 'desktop' }]);
+
+    for (const [direction, snapType] of DIRECTIONS) {
+      const sizeIt = () => {
+        const state = store.getState();
+        const win = state.windows.find((w) => w.id === state.activeId);
+        if (!win) return;
+        if (win.floating) dispatch(actions.snapWindow(win.id, snapType));
+        else dispatch(actions.resizeTile(win.id, direction));
+      };
+      bindings.push([direction, sizeIt, { scope: SCOPES.RESIZE, description: `Size ${direction}`, owner: 'resize' }]);
+      bindings.push([`$mod+${direction}`, sizeIt, { scope: SCOPES.RESIZE, description: `Size ${direction}`, owner: 'resize' }]);
+    }
     bindings.push(
-      ['$mod+left', arrow('left', SN.LEFT),
-        { description: 'Narrower pane, or snap left', owner: 'desktop' }],
-      ['$mod+right', arrow('right', SN.RIGHT),
-        { description: 'Wider pane, or snap right', owner: 'desktop' }],
-      ['$mod+up', arrow('up', SN.TOP),
-        { description: 'Shorter pane, or snap up', owner: 'desktop' }],
-      ['$mod+down', arrow('down', SN.BOTTOM),
-        { description: 'Taller pane, or snap down', owner: 'desktop' }],
+      ['escape', () => setResizeMode(false), { scope: SCOPES.RESIZE, description: 'Leave resize mode', owner: 'resize' }],
+      ['enter', () => setResizeMode(false), { scope: SCOPES.RESIZE, description: 'Leave resize mode', owner: 'resize' }],
     );
 
     // ---- cycle focus (Ctrl+Shift+Tab belongs to the browser) ----
@@ -154,9 +197,15 @@ export function useDesktopKeymap() {
         { scope: SCOPES.LAUNCHER, description: 'Close the start screen', owner: 'launcher' }],
     );
 
-    // ---- task manager, kept from the previous ad-hoc listener ----
+    // ---- task manager ----
+    /*
+     * Not Ctrl+Shift+Escape. That is Windows' own Task Manager chord and the
+     * OS takes it before the page is told anything, so the binding looked
+     * right and never once fired. It is in RESERVED_CHORDS now so the audit
+     * catches anyone trying again.
+     */
     bindings.push([
-      'ctrl+shift+escape',
+      '$mod+escape',
       () => {
         const taskmgr = APPS.find((a) => a.id === 'taskmgr');
         if (taskmgr) dispatch(actions.openWindow(taskmgr, {}));

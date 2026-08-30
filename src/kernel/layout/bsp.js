@@ -99,6 +99,31 @@ export function resize(tree, id, ratio) {
 }
 
 /**
+ * Exchange two windows' places in the tree.
+ *
+ * Only the leaf ids move, so every split and ratio stays put: the layout keeps
+ * its shape and the two windows trade the slots they occupy.
+ *
+ * @param {object|null} tree
+ * @param {string} a
+ * @param {string} b
+ * @returns {object|null}
+ */
+export function swap(tree, a, b) {
+  if (!tree || a === b) return tree;
+  const walk = (n) => {
+    if (!n) return n;
+    if (n.type === 'leaf') {
+      if (n.id === a) return { ...n, id: b };
+      if (n.id === b) return { ...n, id: a };
+      return n;
+    }
+    return { ...n, a: walk(n.a), b: walk(n.b) };
+  };
+  return walk(tree);
+}
+
+/**
  * Move the divider a window shares along one axis.
  *
  * Left/Right change the pane's width and Up/Down its height -- i3's semantics,

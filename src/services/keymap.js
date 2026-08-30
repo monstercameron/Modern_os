@@ -37,16 +37,20 @@ export const RESERVED_CHORDS = new Set([
   'ctrl+shift+r', 'ctrl+shift+delete',
   // Tab cycling
   'ctrl+shift+tab',
+  // Windows itself: Ctrl+Shift+Esc opens the real Task Manager and never
+  // reaches the page.
+  'ctrl+shift+escape',
 ]);
 
 /** Scopes, highest priority first. A binding only fires in an active scope. */
 export const SCOPES = {
   MODAL: 'modal',
+  RESIZE: 'resize',
   LAUNCHER: 'launcher',
   DESKTOP: 'desktop',
 };
 
-const SCOPE_ORDER = [SCOPES.MODAL, SCOPES.LAUNCHER, SCOPES.DESKTOP];
+const SCOPE_ORDER = [SCOPES.MODAL, SCOPES.RESIZE, SCOPES.LAUNCHER, SCOPES.DESKTOP];
 
 /** Normalize a key name so "Escape"/"esc"/"ESC" all match. */
 function normalizeKey(key) {
@@ -334,16 +338,28 @@ export function createKeymap({ mod = 'alt' } = {}) {
     if (!binding) return;
 
     /*
-     * While the caret is in a text field, the field wins. Ctrl+Shift+V, the
-     * arrow keys and friends belong to whoever is typing, not to the window
-     * manager. Three exceptions get through: Escape, so an overlay can always
-     * be dismissed; anything holding Alt, which no text field claims; and
-     * bindings a modal registered for itself — a modal owns the keyboard while
-     * it is up, including its own close chord, which is otherwise unreachable
-     * once its input takes focus.
+     * While the caret is in a text field, the field wins -- but only for the
+     * chords a field actually claims.
+     *
+     * This used to block every desktop binding whenever an input had focus,
+     * which quietly deleted the window manager: Terminal, the ~ console and
+     * the agent all focus their input on mount, so opening one of them meant
+     * losing $mod+1..5, close, hide, maximize, float and the arrows until you
+     * clicked somewhere else. $mod is Ctrl+Shift, which no amount of typing
+     * produces, so almost nothing here was ever a real conflict.
+     *
+     * The rule now is the one a real window manager uses: the desktop owns
+     * its modifier everywhere, and a text field keeps every key that is not
+     * part of a $mod chord. That does mean Ctrl+Shift+Left no longer extends
+     * the selection by word inside an app -- the same trade every tiling WM
+     * makes, and the price of being able to move focus out of a field at all.
+     * A scope that owns the keyboard outright -- a modal, or resize mode --
+     * keeps its own bindings regardless, including bare arrows.
      */
-    const modalOwned = binding.scope === SCOPES.MODAL;
-    if (typing && !modalOwned && descriptor.key !== 'escape' && !descriptor.alt) return;
+    const scopeOwnsKeyboard =
+      binding.scope === SCOPES.MODAL || binding.scope === SCOPES.RESIZE;
+    const bareKey = !descriptor.ctrl && !descriptor.alt && !descriptor.meta;
+    if (typing && !scopeOwnsKeyboard && bareKey && descriptor.key !== 'escape') return;
 
     event.preventDefault();
     binding.handler(event);

@@ -12,6 +12,7 @@ import { AppErrorBoundary } from "./components/ErrorBoundary.jsx";
 import { StubApp } from "./apps/StubApp.jsx";
 import { Launcher } from "./features/launcher/Launcher.jsx";
 import { ShortcutHelper } from "./features/shortcuts/ShortcutHelper.jsx";
+import { ResizeModeBar } from "./features/shortcuts/ResizeModeBar.jsx";
 import { useKernel, dispatch, actions, select } from "./kernel/index.js";
 import { migrateLegacyKeys } from "./services/persistence.js";
 import eventBus from "./utils/eventBus.js";
@@ -112,6 +113,7 @@ export default function App() {
 
       {/* Hold the modifier to see what is bound. */}
       <ShortcutHelper />
+      <ResizeModeBar />
 
       <div
         className={`absolute bottom-1 right-1 px-2 py-1 text-[10px] z-[1700] ${

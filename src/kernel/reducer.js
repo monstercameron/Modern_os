@@ -11,6 +11,7 @@
 
 import { SN, B0, TB, uid } from '../utils/constants.js';
 import { qb, ghostFromPoint } from '../utils/geometry.js';
+import { pickNeighbour } from '../utils/spatialNav.js';
 import { acc, clearBadgeState } from '../utils/appHelpers.js';
 import { isSingleInstance, getMaxInstances } from '../config/manifests.js';
 import {
@@ -44,6 +45,8 @@ export const initialState = {
   /** Desktop preferences that are not themeing. */
   prefs: { focusFollowsMouse: true },
   animatingBadge: null,
+  /** True while the keyboard is latched into resize mode. */
+  resizeMode: false,
 };
 
 // ---------- helpers ----------
@@ -489,6 +492,56 @@ export function reducer(state, action) {
         target.ws
       );
     }
+
+    /*
+     * Directional focus. The neighbour is chosen geometrically rather than by
+     * walking the tree, so it works the same for floating windows, which are
+     * not in the tree at all, and matches the way the tile board moves its
+     * selection -- both call pickNeighbour().
+     */
+    case T.WINDOW_FOCUS_DIRECTION: {
+      const here = state.windows.filter(
+        (w) => w.ws === state.workspaces.current && !w.m
+      );
+      if (here.length < 2 || !state.activeId) return state;
+      const next = pickNeighbour(
+        here.map((w) => ({ id: w.id, ...w.b })),
+        state.activeId,
+        action.direction
+      );
+      if (!next || next === state.activeId) return state;
+      return reconcileActive(raise({ ...state, activeId: next }, next));
+    }
+
+    /*
+     * Move a tiled window: it trades places with its neighbour. Only the leaf
+     * ids move, so the layout keeps its shape and the two windows swap slots
+     * rather than the tree being rebuilt around them.
+     */
+    case T.WINDOW_MOVE_DIRECTION: {
+      const target = state.windows.find((w) => w.id === action.id);
+      if (!target || !isTiled(target)) return state;
+      const here = state.windows.filter(
+        (w) => w.ws === target.ws && isTiled(w)
+      );
+      if (here.length < 2) return state;
+      const partner = pickNeighbour(
+        here.map((w) => ({ id: w.id, ...w.b })),
+        action.id,
+        action.direction
+      );
+      if (!partner) return state;
+      const tree = bsp.swap(state.layouts[target.ws] || null, action.id, partner);
+      return retile(
+        { ...state, layouts: { ...state.layouts, [target.ws]: tree } },
+        target.ws
+      );
+    }
+
+    case T.RESIZE_MODE_SET:
+      return state.resizeMode === !!action.on
+        ? state
+        : { ...state, resizeMode: !!action.on };
 
     case T.WINDOW_SNAP_QUAD: {
       const target = state.windows.find((w) => w.id === action.id);

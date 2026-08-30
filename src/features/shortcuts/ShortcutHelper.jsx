@@ -32,6 +32,9 @@ function groupBindings(list) {
 
   for (const b of list) {
     if (!b.description) continue;
+    // Resize mode has its own on-screen bar; listing its eight bindings here
+    // would bury the ones you press to get into it.
+    if (b.owner === 'resize') continue;
     const digit = /(\d)$/.exec(b.id);
     const key = digit
       ? `${b.id.slice(0, -1)}#|${b.description.replace(/\d+/, '#')}`
@@ -53,7 +56,7 @@ function groupBindings(list) {
 
 const SECTIONS = [
   { title: 'Workspaces', match: (d) => /workspace/i.test(d) },
-  { title: 'Windows', match: (d) => /window|maximize|tiling|snap|unhide/i.test(d) },
+  { title: 'Windows', match: (d) => /window|maximize|tiling|snap|unhide|resize/i.test(d) },
   { title: 'Desktop', match: () => true },
 ];
 

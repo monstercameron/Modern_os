@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import keymap from '../services/keymap.js';
 
 /**
  * Settings Context
@@ -227,27 +228,31 @@ function isObject(item) {
 }
 
 /**
- * Keyboard shortcut hook for settings reset
+ * The settings reset shortcut.
+ *
+ * This was a raw keydown listener on Ctrl+Shift+R -- which is both the
+ * browser's hard-reload chord and, once $mod became Ctrl+Shift, a collision
+ * with the desktop's own bindings: pressing $mod+R anywhere popped a native
+ * confirm() that blocked the page. Because it never went through the keymap,
+ * the reserved-chord audit that exists to catch exactly this could not see it.
+ *
+ * It goes through the registry now, on a chord nothing else claims, and it
+ * still asks before throwing anything away.
  */
 export function useSettingsShortcuts() {
   const { resetSettings } = useSettings();
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ctrl+Shift+R - Emergency settings reset
-      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
-        e.preventDefault();
-        const confirmed = window.confirm(
-          'Reset all settings to defaults?\n\nThis action cannot be undone.'
-        );
-        if (confirmed) {
-          resetSettings();
-          window.location.reload();
-        }
+  useEffect(() => keymap.bind(
+    '$mod+alt+r',
+    () => {
+      const confirmed = window.confirm(
+        'Reset all settings to defaults?\n\nThis action cannot be undone.'
+      );
+      if (confirmed) {
+        resetSettings();
+        window.location.reload();
       }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [resetSettings]);
+    },
+    { description: 'Reset all settings', owner: 'settings' }
+  ), [resetSettings]);
 }
