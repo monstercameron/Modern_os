@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { DesktopGrid } from '../../components/DesktopGrid.jsx';
 import { useKernel, dispatch, actions, select } from '../../kernel/index.js';
 import keymap, { SCOPES } from '../../services/keymap.js';
+import eventBus from '../../utils/eventBus.js';
+import { LAUNCHER_PAN } from '../../components/DesktopGrid.jsx';
 import { TB } from '../../utils/constants.js';
 
 /**
@@ -30,10 +32,16 @@ export function Launcher({ apps, badges, onOpen, onQuick, animatingBadge }) {
   useEffect(() => {
     if (!open) return undefined;
     const release = keymap.pushScope(SCOPES.LAUNCHER);
+    const unbind = keymap.bindAll([
+      ['$mod+right', () => eventBus.publish(LAUNCHER_PAN, { direction: 1 }),
+        { scope: SCOPES.LAUNCHER, description: 'Pan the board right', owner: 'launcher' }],
+      ['$mod+left', () => eventBus.publish(LAUNCHER_PAN, { direction: -1 }),
+        { scope: SCOPES.LAUNCHER, description: 'Pan the board left', owner: 'launcher' }],
+    ]);
     const id = requestAnimationFrame(() => {
       document.querySelector('[data-launcher-grid]')?.focus({ preventScroll: true });
     });
-    return () => { cancelAnimationFrame(id); release(); };
+    return () => { cancelAnimationFrame(id); unbind(); release(); };
   }, [open]);
 
   const close = () => dispatch(actions.closeLauncher());

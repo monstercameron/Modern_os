@@ -7,9 +7,6 @@ import { SN } from '../utils/constants.js';
 import eventBus from '../utils/eventBus.js';
 import { APP_CONSOLE_OPEN } from '../features/agent/desktopAgent.js';
 
-/** Topic the global agent overlay listens on. */
-export const DESKTOP_AGENT_TOGGLE = 'agent.desktop.toggle';
-
 /**
  * The desktop's key bindings.
  *
@@ -64,13 +61,19 @@ export function useDesktopKeymap() {
       // Ctrl+Shift+Q is the browser's on some platforms, so close uses X.
       ['$mod+x', () => { const id = focusedId(); if (id) dispatch(actions.closeWindow(id)); },
         { description: 'Close focused window', owner: 'desktop' }],
-      // Ctrl+Shift+M is Chrome's profile switcher; minimize uses Down.
-      ['$mod+down', () => { const id = focusedId(); if (id) dispatch(actions.minimizeWindow(id)); },
-        { description: 'Minimize focused window', owner: 'desktop' }],
-      // Minimizing a tiled window removes its only on-screen handle, so the way
-      // back needs a key of its own rather than only the taskbar.
+      /*
+       * Hide and unhide are a lettered pair.
+       *
+       * Minimize was on $mod+Down, which read as "close" to anyone who tried
+       * it: the other three arrows snap the window, so Down looked like it
+       * should snap to the bottom, and instead the window disappeared with no
+       * visible trace. The arrows are a consistent set again and hiding has a
+       * mnemonic of its own, next to the key that brings it back.
+       */
+      ['$mod+h', () => { const id = focusedId(); if (id) dispatch(actions.minimizeWindow(id)); },
+        { description: 'Hide focused window', owner: 'desktop' }],
       ['$mod+u', () => dispatch(actions.restoreLastWindow()),
-        { description: 'Unhide the last minimized window', owner: 'desktop' }],
+        { description: 'Unhide the last hidden window', owner: 'desktop' }],
       ['$mod+f', () => { const id = focusedId(); if (id) dispatch(actions.toggleMaximizeWindow(id)); },
         { description: 'Toggle maximize', owner: 'desktop' }],
       ['$mod+v', () => { const id = focusedId(); if (id) dispatch(actions.toggleFloating(id)); },
@@ -81,6 +84,8 @@ export function useDesktopKeymap() {
         { description: 'Snap window right', owner: 'desktop' }],
       ['$mod+up', () => { const id = focusedId(); if (id) dispatch(actions.snapWindow(id, SN.TOP)); },
         { description: 'Snap window up', owner: 'desktop' }],
+      ['$mod+down', () => { const id = focusedId(); if (id) dispatch(actions.snapWindow(id, SN.BOTTOM)); },
+        { description: 'Snap window down', owner: 'desktop' }],
     );
 
     // ---- cycle focus (Ctrl+Shift+Tab belongs to the browser) ----
@@ -108,9 +113,16 @@ export function useDesktopKeymap() {
         eventBus.publish(APP_CONSOLE_OPEN, { appId: win.appId });
       }, { description: "Open the focused app's agent", owner: 'desktop' }],
 
-      // The desktop-wide agent, which can reach across apps and the kernel.
-      ['$mod+g', () => eventBus.publish(DESKTOP_AGENT_TOGGLE, {}),
-        { description: 'Open the desktop agent', owner: 'desktop' }],
+      /*
+       * The desktop agent is an app, not an overlay, so it opens the same way
+       * everything else does and the tiling engine places it. Opening it twice
+       * focuses the window that already exists — its manifest is single
+       * instance — rather than stacking copies.
+       */
+      ['$mod+g', () => {
+        const agent = APPS.find((a) => a.id === 'agent');
+        if (agent) dispatch(actions.openWindow(agent, {}));
+      }, { description: 'Open the desktop agent', owner: 'desktop' }],
     );
 
     // ---- launcher ----
@@ -133,8 +145,14 @@ export function useDesktopKeymap() {
 
     const unbind = keymap.bindAll(bindings);
 
-    // Tapping the modifier on its own toggles the launcher, the way a Super tap
-    // opens a launcher on a tiling desktop.
+    /*
+     * Tapping the modifier on its own toggles the launcher, the way a Super tap
+     * opens one on a tiling desktop. This only applies to single-key modifiers
+     * (Alt, Super) — with the Ctrl+Shift default there is no unambiguous "tap",
+     * and a bare Ctrl press is far too common to hang the start screen off, so
+     * the keymap does not report one. $mod+Space is the binding that always
+     * works.
+     */
     const offTap = keymap.onModTap(() => dispatch(actions.toggleLauncher()));
 
     return () => { unbind(); offTap(); detach(); };

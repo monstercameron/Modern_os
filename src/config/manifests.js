@@ -4,6 +4,28 @@
  */
 
 export const APP_MANIFESTS = {
+  agent: {
+    id: "agent",
+    title: "Agent",
+    permissions: {
+      network: false,
+      storage: true,
+      location: false,
+      camera: false,
+      microphone: false,
+    },
+    features: {
+      notifications: false,
+      background: false,
+      multiWindow: false,
+    },
+    capabilities: {
+      // One agent window: opening it again focuses the one already there.
+      maxInstances: 1,
+      singleInstance: true,
+    },
+  },
+
   browser: {
     id: "browser",
     title: "Browser",

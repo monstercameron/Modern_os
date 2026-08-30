@@ -7,6 +7,9 @@ import { useGridNavigation } from '../hooks/useGridNavigation.js';
 import { CONTEXT_TYPES, MENU_ACTIONS } from '../utils/contextMenuStateMachine.js';
 import eventBus, { TOPICS } from '../utils/eventBus.js';
 
+/** Topic the launcher-scope pan bindings publish on. */
+export const LAUNCHER_PAN = 'launcher.pan';
+
 const ROW_HEIGHT = 96;
 
 /**
@@ -78,20 +81,51 @@ export const DesktopGrid = memo(function DesktopGrid({
     onActivate: activate,
   });
 
-  // Rows are sized to the window so the board fills the height before it grows
-  // sideways. Recomputed whenever the launcher is resized.
+  /*
+   * Rows are sized to the board itself, not to the window.
+   *
+   * Measuring the outer container counted the search bar as usable height, so
+   * a short window kept a row count it could not fit and the tiles spilled out
+   * of a box that clips vertically — which looked like tiles overlapping. The
+   * observer now watches the grid element, and the row count is derived from
+   * the height that element actually has.
+   */
   useEffect(() => {
-    const el = scrollRef.current;
+    const el = gridRef.current;
     if (!el) return undefined;
     const measure = () => {
-      const usable = el.clientHeight - 16; // matches the container padding
-      setRows(Math.max(1, Math.floor(usable / (ROW_HEIGHT + 8))));
+      const gap = parseFloat(getComputedStyle(el).rowGap) || 8;
+      const usable = el.clientHeight;
+      if (usable <= 0) return;
+      setRows(Math.max(1, Math.floor((usable + gap) / (ROW_HEIGHT + gap))));
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
+  }, [visible.length]);
+
+  /*
+   * A tile can ask for more rows than the board has. Left alone, the grid
+   * invents implicit rows to hold it and the whole column overflows; clamping
+   * the span keeps every tile inside the board at any height.
+   */
+  const fitSpan = useCallback((size) => {
+    const rowSpan = Number(/row-span-(\d+)/.exec(size)?.[1] || 1);
+    if (rowSpan <= rows) return size;
+    return size.replace(/row-span-\d+/, `row-span-${Math.max(1, rows)}`);
+  }, [rows]);
+
+  /** Pan the board by most of a screenful, for boards wider than the window. */
+  const pan = useCallback((direction) => {
+    const el = gridRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.max(200, el.clientWidth * 0.8), behavior: 'smooth' });
   }, []);
+
+  // $mod+Left/Right pan while the board is up; the launcher scope shadows the
+  // window-snapping those chords do on the desktop, which is meaningless here.
+  useEffect(() => eventBus.subscribe(LAUNCHER_PAN, ({ direction }) => pan(direction)), [pan]);
 
   /*
    * Type-to-filter. A printable key anywhere on the board starts a search
@@ -100,6 +134,11 @@ export const DesktopGrid = memo(function DesktopGrid({
    */
   const onKeyDown = useCallback((e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    // Panning is separate from moving the selection: it shows what has been
+    // pushed off to the right without changing what is selected.
+    if (e.key === 'PageDown') { e.preventDefault(); e.stopPropagation(); pan(1); return; }
+    if (e.key === 'PageUp') { e.preventDefault(); e.stopPropagation(); pan(-1); return; }
 
     if (handleKey(e)) {
       e.preventDefault();
@@ -129,7 +168,7 @@ export const DesktopGrid = memo(function DesktopGrid({
       setQuery((q) => q + e.key);
       searchRef.current?.focus();
     }
-  }, [handleKey, query, reset]);
+  }, [handleKey, query, reset, pan]);
 
   return (
     <div
@@ -170,7 +209,7 @@ export const DesktopGrid = memo(function DesktopGrid({
         </div>
         <span className="text-[11px]" style={{ color: 'var(--theme-text-muted)' }}>
           {query ? `${visible.length} of ${apps.length}` : `${apps.length} apps`}
-          <span className="ml-2 app-hide-sm">· arrows to move, Enter to open</span>
+          <span className="ml-2 app-hide-sm">· arrows to move, Enter to open, PageUp/PageDown to pan</span>
         </span>
       </div>
 
@@ -199,7 +238,7 @@ export const DesktopGrid = memo(function DesktopGrid({
           }}
         >
           {visible.map((app, i) => {
-            const customSize = tileSizes[app.id] || app.size;
+            const customSize = fitSpan(tileSizes[app.id] || app.size);
             return (
               <Tile
                 key={app.id}

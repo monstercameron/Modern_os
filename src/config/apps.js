@@ -31,6 +31,7 @@ import {
   Newspaper,
   Blocks,
   Info,
+  Sparkles,
 } from "lucide-react";
 
 import { StubApp } from "../apps/StubApp.jsx";
@@ -42,6 +43,7 @@ import { MusicApp, PhotosApp, VideoApp, VoiceApp, AudioRecorderApp, CameraApp, D
 import { FilesApp, ActivityMonitorApp, DiskUtilityApp, CalculatorApp, WeatherApp, MapsApp, NewsApp, DatabaseApp, ClockApp, CodeEditorApp, PDFViewerApp } from "../features/apps/SystemApps.jsx";
 import { TerminalApp, BrowserApp, AboutApp } from "../features/apps/ShellApps.jsx";
 import { SettingsApp, TaskManagerApp, TileConfiguratorApp } from "../features/apps/SystemToolApps.jsx";
+import { AgentApp } from "../features/agent/AgentApp.jsx";
 import { getManifest } from "./manifests.js";
 
 export const APPS = [
@@ -79,5 +81,6 @@ export const APPS = [
   { id: "clock",    title: "Clock",    color: "bg-neutral-600", icon: Clock, size: "col-span-1 row-span-1", content: ClockApp, splashType: "logo", manifest: () => getManifest("clock") },
   { id: "news",     title: "News",     color: "bg-cyan-600", icon: Newspaper, size: "col-span-2 row-span-1", content: NewsApp, splashType: "spinner", manifest: () => getManifest("news") },
   { id: "tileconfig", title: "Tile Config", color: "bg-gradient-to-br from-indigo-600 to-purple-600", icon: Blocks, size: "col-span-2 row-span-2", content: TileConfiguratorApp, splashType: "logo", manifest: () => getManifest("tileconfig") },
+  { id: "agent", title: "Agent", color: "bg-fuchsia-600", icon: Sparkles, size: "col-span-2 row-span-1", content: AgentApp, splashType: "logo", manifest: () => getManifest("agent") },
   { id: "about", title: "About", color: "bg-slate-700", icon: Info, size: "col-span-1 row-span-1", content: AboutApp, splashType: "minimal", manifest: () => getManifest("about") },
 ];

@@ -171,6 +171,51 @@ export function createKeymap({ mod = 'alt' } = {}) {
   let attached = false;
   let modDownAlone = false;
 
+  /*
+   * Holding the modifier on its own is a question: "what can I press?". We
+   * watch which modifier keys are down, and once the full set has been held for
+   * a beat with nothing else pressed, listeners are told to show the cheatsheet.
+   * Any other key, or letting go, dismisses it.
+   */
+  const HOLD_MS = 900;
+  const heldModifiers = new Set();
+  const holdListeners = new Set();
+  let holdTimer = 0;
+  let holdShowing = false;
+
+  const requiredModifiers = () => currentMod.split('+').map((m) => (m === 'control' ? 'Control' : m === 'alt' ? 'Alt' : m === 'shift' ? 'Shift' : 'Meta'));
+
+  const announceHold = (showing) => {
+    if (holdShowing === showing) return;
+    holdShowing = showing;
+    for (const listener of [...holdListeners]) listener(showing);
+  };
+
+  const cancelHold = () => {
+    clearTimeout(holdTimer);
+    holdTimer = 0;
+    announceHold(false);
+  };
+
+  const maybeStartHold = () => {
+    const required = requiredModifiers();
+    const satisfied = required.every((k) => heldModifiers.has(k));
+    // Extra modifiers beyond the set mean a different chord is being formed.
+    const exact = satisfied && heldModifiers.size === required.length;
+    if (!exact) { cancelHold(); return; }
+    if (holdTimer || holdShowing) return;
+    holdTimer = setTimeout(() => {
+      holdTimer = 0;
+      announceHold(true);
+    }, HOLD_MS);
+  };
+
+  /** Notified with `true` when the modifier has been held, `false` on release. */
+  function onModHold(listener) {
+    holdListeners.add(listener);
+    return () => holdListeners.delete(listener);
+  }
+
   const rebuildKey = (chord) => descriptorId(parseChord(chord, currentMod));
 
   /**
@@ -265,15 +310,24 @@ export function createKeymap({ mod = 'alt' } = {}) {
     );
   }
 
+  const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
+
   function handleKeyDown(event) {
+    if (MODIFIER_KEYS.has(event.key)) {
+      heldModifiers.add(event.key);
+      maybeStartHold();
+    }
+
     if (isModKey(event)) {
       modDownAlone = true;
       return;
     }
     modDownAlone = false;
 
+    // Any real key means the user is pressing a chord, not asking for help.
+    if (!MODIFIER_KEYS.has(event.key)) cancelHold();
+
     const descriptor = eventDescriptor(event);
-    const hasModifier = descriptor.ctrl || descriptor.alt || descriptor.meta;
     const typing = isTypingTarget(event.target);
 
     const binding = resolve(descriptorId(descriptor));
@@ -296,6 +350,10 @@ export function createKeymap({ mod = 'alt' } = {}) {
   }
 
   function handleKeyUp(event) {
+    if (MODIFIER_KEYS.has(event.key)) {
+      heldModifiers.delete(event.key);
+      cancelHold();
+    }
     if (isModKey(event) && modDownAlone) {
       modDownAlone = false;
       for (const listener of [...tapListeners]) listener(event);
@@ -304,6 +362,8 @@ export function createKeymap({ mod = 'alt' } = {}) {
 
   function handleBlur() {
     modDownAlone = false;
+    heldModifiers.clear();
+    cancelHold();
   }
 
   function attach(target = window) {
@@ -346,7 +406,7 @@ export function createKeymap({ mod = 'alt' } = {}) {
 
   return {
     bind, bindAll, pushScope, popScope, attach,
-    setMod, getMod, onModTap, list,
+    setMod, getMod, onModTap, onModHold, list,
     SCOPES,
   };
 }
