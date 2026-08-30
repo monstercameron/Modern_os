@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Modern OS — a desktop that runs in a browser tab</title>
-<meta name="description" content="Modern OS is a Metro-inspired desktop environment built in React: live tiles, a window manager, an event bus, and a configurable tile format. Open the live demo." />
+<title>Modern OS — a tiling desktop that runs in a browser tab</title>
+<meta name="description" content="Modern OS is a tiling desktop environment built in React: a BSP window manager, five workspaces, a keymap with scopes, and a start screen of live tiles that animate as their data changes. Open the live demo." />
 <meta property="og:title" content="Modern OS" />
 <meta property="og:description" content="A Metro-inspired desktop environment built in React. Live tiles, window manager, event bus, configurable tile format." />
 <meta property="og:image" content="https://monstercameron.github.io/Modern_os/screenshots/desktop.png" />
@@ -212,6 +212,7 @@
     <a href="#desktop" class="hide-sm">Desktop</a>
     <a href="#tiles" class="hide-sm">Tiles</a>
     <a href="#windows" class="hide-sm">Windows</a>
+    <a href="#keyboard" class="hide-sm">Keyboard</a>
     <a href="#shell">Under the shell</a>
     <a href="https://github.com/monstercameron/Modern_os">GitHub</a>
     <span class="clock" id="clock">--:--</span>
@@ -221,8 +222,8 @@
 <header class="hero">
   <div class="wrap grid6">
     <div class="tile tile--pitch">
-      <h1>A desktop that runs in a browser tab.</h1>
-      <p>Modern OS is a Metro-inspired desktop environment written in React. Live tiles launch apps, windows snap and stack, and a task manager lists them as processes — all of it running on a shared event bus, three state machines, and a per-app permission manifest.</p>
+      <h1>A tiling desktop that runs in a browser tab.</h1>
+      <p>Windows arrange themselves into a BSP layout, five workspaces sit behind <code>Ctrl+Shift+1..5</code>, and the start screen is a wall of live tiles that update while you look at them — all on a headless kernel with a pure reducer and a scoped keymap.</p>
       <div class="cta">
         <a class="btn btn--solid" href="app/">Open the demo</a>
         <a class="btn btn--ghost" href="https://github.com/monstercameron/Modern_os">Read the source</a>
@@ -233,24 +234,24 @@
       <span class="live__label">event bus</span>
       <div class="live__inner" id="live">
         <div class="live__face" data-state="in">
-          <h3>window.snap</h3>
-          <p>Drag a window to an edge and the snap machine decides which zone you're over.</p>
+          <h3>window.tile</h3>
+          <p>A new window splits the focused one along its longer axis. No title bars — the layout owns the geometry.</p>
         </div>
         <div class="live__face" data-state="wait">
-          <h3>tile.longPress</h3>
-          <p>Hold a tile and the whole grid enters edit mode, ready to resize.</p>
+          <h3>tile.feed</h3>
+          <p>Nineteen live feeds, one scheduler, at most two updates a tick — so the board reads as things happening, not a wave.</p>
         </div>
         <div class="live__face" data-state="wait">
           <h3>notification.new</h3>
-          <p>The action center and the app's tile badge update from the same message.</p>
+          <p>A feed posts once: the tile, its taskbar badge and the notification panel all read the same count.</p>
         </div>
       </div>
     </div>
 
-    <div class="tile stat"><b>35</b><span>tiles on the start screen</span></div>
-    <div class="tile stat"><b>34</b><span>apps with a manifest</span></div>
-    <div class="tile stat"><b>11.5k</b><span>lines of source</span></div>
-    <div class="tile stat"><b>6 × 96</b><span>columns · px row height</span></div>
+    <div class="tile stat"><b>36</b><span>apps, all with real content</span></div>
+    <div class="tile stat"><b>19</b><span>live tile feeds</span></div>
+    <div class="tile stat"><b>5</b><span>workspaces on $mod+1..5</span></div>
+    <div class="tile stat"><b>5</b><span>tile animations</span></div>
   </div>
 </header>
 
@@ -260,7 +261,7 @@
   <div class="wrap">
     <p class="eyebrow">Live</p>
     <h2>Boot it here.</h2>
-    <p class="lede">The real thing, running in the page. Click a tile to open an app, drag a window by its title bar, right-click the desktop, or open the action center from the taskbar clock. <strong>Nothing is recorded and nothing is saved to a server</strong> — it is all running in your browser.</p>
+    <p class="lede">The real thing, running in the page. Click a tile to open an app, press <code>Ctrl+Shift+←→</code> to move focus between tiled windows, hold <code>Ctrl+Shift</code> to see every binding, or open the notification panel from the taskbar status cluster. <strong>Nothing is recorded and nothing is saved to a server</strong> — it is all running in your browser.</p>
     <div class="frame">
       <div class="frame__bar">modern os <span id="demo-state">not started</span></div>
       <div class="demo" id="demo-stage">
@@ -281,11 +282,11 @@
 <section class="section" id="desktop" style="--key:var(--azure)">
   <div class="wrap">
     <p class="eyebrow">app.launch</p>
-    <h2>Tiles are the launcher.</h2>
-    <p class="lede">There are no icons. Every app is a colored tile that carries its own state — unread counts, now playing, the next calendar entry, a file path — and updates in place while you look at it. <strong>Right-click to resize or pin; long-press to enter edit mode.</strong> The grid is six columns of 96-pixel rows, and tiles claim spans of it.</p>
+    <h2>Tiles are alive.</h2>
+    <p class="lede">There are no icons. Every app is a colored tile carrying its own state — CPU load, disk usage, query rate, unread count, download progress — and it animates when that changes. Updates speak a small vocabulary: <strong>flip</strong> when something is replaced, <strong>slide</strong> for the next item in a sequence, <strong>roll</strong> for a number that should count rather than cut, and an <strong>attention ring</strong> for the few that genuinely want you. The board fills downward and grows to the right; type to filter it.</p>
     <div class="frame">
       <div class="frame__bar">start screen <span>1600 × 1000</span></div>
-      <img src="screenshots/desktop.png" alt="Start screen showing 35 live tiles including Terminal, Browser, Music, Weather and Maps" width="1920" height="1200" loading="lazy" />
+      <img src="screenshots/desktop.png" alt="Start screen of live tiles showing CPU load, disk usage, query rates, unread counts and download progress" width="1600" height="1000" loading="lazy" />
     </div>
   </div>
 </section>
@@ -310,12 +311,17 @@
 
 <section class="section" id="windows" style="--key:var(--indigo)">
   <div class="wrap">
-    <p class="eyebrow">window.snap</p>
-    <h2>Windows, with a process table behind them.</h2>
-    <p class="lede">Apps open into draggable windows that minimize, maximize and snap to halves and quadrants — the snap geometry is its own state machine, with smoke tests over the rectangles it produces. <strong>Task Manager reads the live window list</strong>, so every open app shows up with a window ID and can be focused, minimized or killed from the table.</p>
+    <p class="eyebrow">window.tile</p>
+    <h2>Tiling by default, floating when you say so.</h2>
+    <p class="lede">The first window owns the viewport; each new one splits the focused window along its longer axis. <strong>There are no title bars in tile mode</strong> — the layout owns the geometry, so a drag handle would be a lie and the space goes to the app. The tiling engine is a pure function from a workspace's window list to rectangles, called inside the reducer.</p>
     <div class="frame">
-      <div class="frame__bar">task manager + files <span>2 windows · 1 process</span></div>
-      <img src="screenshots/windows.png" alt="Task Manager listing the Files window as a running process, next to the Files app browsing folders" width="1920" height="1200" loading="lazy" />
+      <div class="frame__bar">workspace 1 <span>3 windows · dwindle</span></div>
+      <img src="screenshots/windows.png" alt="Three windows tiled in a BSP layout: Terminal on the left, Browser and Notes stacked on the right, none with title bars" width="1600" height="1000" loading="lazy" />
+    </div>
+    <p class="lede" style="margin-top:1.5rem">Snapping or dragging by hand implies floating, because you cannot drag something the layout is positioning for you. <code>Ctrl+Shift+V</code> pops a window out, and it grows a title bar on the way.</p>
+    <div class="frame">
+      <div class="frame__bar">placement <span>tiled × floating</span></div>
+      <img src="screenshots/floating.png" alt="The same layout with the Browser floated out above the tiled windows, carrying a title bar" width="1600" height="1000" loading="lazy" />
     </div>
   </div>
 </section>
@@ -323,12 +329,30 @@
 <section class="section" style="--key:var(--magenta)">
   <div class="wrap">
     <p class="eyebrow">notification.new</p>
-    <h2>One place for everything the system wants to say.</h2>
-    <p class="lede">The action center takes the whole screen: notifications on the left with per-app icons and read state, media transport and quick settings on the right. <strong>Toggles and sliders publish to the same bus the apps listen on</strong> — switching to dark here is the same event the settings app fires.</p>
+    <h2>A panel, not a takeover.</h2>
+    <p class="lede">Notifications group by app, so twelve of them read as three sources rather than a wall. Each one dismisses on its own, unread is an accent edge that survives a dense list, and the times are real and tick while the panel is open. <strong>It is a column beside your work, not a sheet over it</strong> — on a tiling desktop, the thing it would cover is the layout you were reading.</p>
     <div class="frame">
-      <div class="frame__bar">action center <span>notifications · quick settings</span></div>
-      <img src="screenshots/action-center.png" alt="Full-screen action center with a notification list and quick settings toggles for Wi-Fi, Bluetooth, dark mode and do not disturb" width="1920" height="1200" loading="lazy" />
+      <div class="frame__bar">notification panel <span>grouped · dismissable</span></div>
+      <img src="screenshots/notifications.png" alt="The notification panel open beside two tiled windows, with notifications grouped under Messages, Email, Calendar and Downloads" width="1600" height="1000" loading="lazy" />
     </div>
+  </div>
+</section>
+
+<section class="section" id="keyboard" style="--key:var(--cobalt)">
+  <div class="wrap">
+    <p class="eyebrow">keymap</p>
+    <h2>The keyboard is the interface.</h2>
+    <p class="lede"><code>$mod</code> is <code>Ctrl+Shift</code>, because Windows swallows <code>Super</code>+digit before a browser tab ever sees it. Bindings are data in one registry with a scope stack, and a dev-time audit warns when a chord resolves to something the browser or the OS takes first. <strong>Hold <code>Ctrl+Shift</code> and the current bindings appear</strong>, read from the live keymap rather than a written-down copy, so the sheet cannot drift from what the desktop does.</p>
+    <div class="frame">
+      <div class="frame__bar">hold to remember <span>read from the live keymap</span></div>
+      <img src="screenshots/shortcuts.png" alt="The hold-to-remember cheatsheet showing three columns of bindings grouped into Workspaces, Windows and Desktop" width="1600" height="1000" loading="lazy" />
+    </div>
+    <dl class="specs">
+      <div class="spec"><dt>$mod+1..5</dt><dd>switch workspace</dd></div>
+      <div class="spec"><dt>$mod+arrows</dt><dd>focus that way</dd></div>
+      <div class="spec"><dt>$mod+Alt+arrows</dt><dd>move the window</dd></div>
+      <div class="spec"><dt>$mod+S</dt><dd>resize mode</dd></div>
+    </dl>
   </div>
 </section>
 
@@ -336,31 +360,31 @@
   <div class="wrap">
     <p class="eyebrow">Under the shell</p>
     <h2>The apps are tenants. The system is the project.</h2>
-    <p class="lede">Most of the code is not in the apps — it is in the services they sit on. Anything an app needs from the system, it gets by publishing or subscribing, and what it is allowed to do is declared up front in a manifest.</p>
+    <p class="lede">Most of the code is not in the apps — it is in the layer they sit on. The rule the layering enforces: <strong>UI dispatches actions and reads selectors; it never mutates window state directly.</strong> That is what let the tiling engine drop in as a pure function without a single component learning it existed.</p>
     <div class="services">
       <div class="svc" style="--key:var(--amber)">
-        <h3>Event bus</h3><code>src/utils/eventBus.js</code>
-        <p>Namespaced pub/sub — window, media, notification, taskbar, tile and context-menu topics.</p>
+        <h3>Kernel</h3><code>src/kernel/</code>
+        <p>Observable store, pure reducer, typed actions, memoised selectors — the single source of truth for every window.</p>
       </div>
       <div class="svc" style="--key:var(--azure)">
-        <h3>State machines</h3><code>window · snap · contextMenu</code>
-        <p>Window lifecycle, snap-zone selection and menu state are explicit transitions, not scattered booleans.</p>
+        <h3>Window machine</h3><code>kernel/windowState.js</code>
+        <p>Placement (tiled/floating) × display (normal/minimized/fullscreen) as a total transition table that refuses rather than invents.</p>
       </div>
       <div class="svc" style="--key:var(--violet)">
-        <h3>App manifests</h3><code>src/config/manifests.js</code>
-        <p>Per-app permissions (network, storage, camera, mic), features, and instance limits.</p>
+        <h3>Tiling engine</h3><code>kernel/layout/bsp.js</code>
+        <p>A binary tree per workspace. <code>tree =&gt; Map&lt;windowId, rect&gt;</code>, pure, called after anything that changes the set.</p>
       </div>
       <div class="svc" style="--key:var(--magenta)">
-        <h3>Theme engine</h3><code>src/ThemeContext.jsx</code>
-        <p>Accent, background, surface, text and border tokens with six presets and a light/dark switch.</p>
+        <h3>Keymap</h3><code>src/services/keymap.js</code>
+        <p>Chord parsing, a scope stack so a modal shadows the desktop, hold detection, and an audit for chords the browser takes first.</p>
       </div>
       <div class="svc" style="--key:var(--indigo)">
-        <h3>Snap geometry</h3><code>src/utils/geometry.js</code>
-        <p>Halves, quadrants and edge targets computed from the viewport, covered by smoke tests at boot.</p>
+        <h3>Theme + motion</h3><code>src/services/theme.js</code>
+        <p>Colour, shape, depth and motion tokens. Every animation asks permission: <code>reduced</code> drops decorative movement, <code>none</code> stops it.</p>
       </div>
       <div class="svc" style="--key:var(--cobalt)">
-        <h3>Error boundaries</h3><code>src/components/ErrorBoundary.jsx</code>
-        <p>A crashing app takes down its own window, not the desktop around it.</p>
+        <h3>Tile feeds</h3><code>src/features/tiles/</code>
+        <p>Nineteen simulated sources, the animation vocabulary, and one scheduler that keeps them from all moving at once.</p>
       </div>
     </div>
   </div>
@@ -386,35 +410,35 @@ npm run build:pages</pre>
   <div class="wrap">
     <p class="eyebrow">Status</p>
     <h2>What's finished and what isn't.</h2>
-    <p class="lede">The shell is the mature half. The app layer is deliberately thin — most tiles open a placeholder while the system underneath them gets built out.</p>
+    <p class="lede">The shell is the mature half, and it is now most of the way there. The gaps that are left are named rather than hidden.</p>
     <div class="status">
       <div style="--key:var(--azure)">
         <h3>Working</h3>
         <ul>
-          <li>Tile grid with live content and resize</li>
-          <li>Window manager: drag, snap, minimize, maximize</li>
-          <li>Taskbar, action center, quick settings</li>
-          <li>Theme engine with six presets</li>
-          <li>Task Manager over the real window list</li>
-          <li>Tile configurator with widget slots</li>
+          <li>BSP tiling with floating opt-out</li>
+          <li>Five workspaces, keymap and cheatsheet</li>
+          <li>Live tiles: 19 feeds, 5 animations</li>
+          <li>Notification panel, grouped and dismissable</li>
+          <li>Per-app and desktop agents</li>
+          <li>All 36 apps render real content</li>
         </ul>
       </div>
       <div style="--key:var(--amber)">
-        <h3>In progress</h3>
+        <h3>Known gaps</h3>
         <ul>
-          <li>13 of 35 apps render real content</li>
+          <li>Taskbar and start screen ignore theme tokens</li>
+          <li>Unhide is last-in-first-out with no picker</li>
+          <li>No control over split direction</li>
           <li>Settings: only Personalization is wired</li>
-          <li>Theme tokens don't reach every app interior</li>
-          <li>Several bus topics publish to no subscriber</li>
         </ul>
       </div>
       <div style="--key:var(--magenta)">
         <h3>Next</h3>
         <ul>
-          <li>Take one app end to end on every service</li>
-          <li>Wire tile context-menu actions to handlers</li>
-          <li>Virtual desktops and window grouping</li>
-          <li>Fill out the remaining 22 placeholders</li>
+          <li>Theme tokens through the whole shell</li>
+          <li>A window picker for hidden windows</li>
+          <li>Split-direction control before opening</li>
+          <li>Drag-to-swap between tiled panes</li>
         </ul>
       </div>
     </div>

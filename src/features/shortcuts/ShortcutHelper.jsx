@@ -93,8 +93,15 @@ export function ShortcutHelper() {
           transition={motionSettings.tween('fast')}
         >
           <motion.div
-            className="border overflow-hidden max-w-[min(760px,92vw)] max-h-[80vh] overflow-y-auto"
+            /*
+              An explicit width, not a max-width. Shrink-to-fit gave the grid
+              inside no room to work with, so `repeat(auto-fit, minmax(260px,
+              1fr))` resolved to a single column and the sheet came out as one
+              tall list — the shape you cannot scan while holding a chord.
+            */
+            className="border overflow-hidden max-h-[80vh] overflow-y-auto"
             style={{
+              width: 'min(880px, 94vw)',
               backgroundColor: 'var(--theme-surface)',
               borderColor: 'var(--theme-accent)',
               borderRadius: 'var(--theme-radius)',
@@ -109,7 +116,9 @@ export function ShortcutHelper() {
               className="px-4 py-2.5 border-b flex items-baseline gap-3"
               style={{ borderColor: 'var(--theme-border)', backgroundColor: 'var(--theme-surface-alt)' }}
             >
-              <span className="text-[13px] font-semibold">Keyboard</span>
+              <span className="text-[13px] font-semibold" style={{ color: 'var(--theme-text)' }}>
+                Keyboard
+              </span>
               <span className="text-[11px]" style={{ color: 'var(--theme-text-muted)' }}>
                 Holding {modName} · release to dismiss
               </span>
