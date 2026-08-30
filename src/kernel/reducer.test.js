@@ -232,6 +232,95 @@ describe('the state machine is the only authority', () => {
   });
 });
 
+describe('drag and snap paths', () => {
+  /*
+   * These exist because making the reducer pure changed the signatures of
+   * qb() and ghostFromPoint() to take the viewport, and two call sites inside
+   * the reducer were left passing the old argument list. Nothing failed at
+   * build time — they are plain function calls — so dragging a window and
+   * snapping one to a quadrant both threw at the first use. Exercising every
+   * branch that computes geometry is the cheap way to never repeat that.
+   */
+  it('moves a window to a point without throwing', () => {
+    let s = open(boot(), 'a');
+    const id = s.windows[0].id;
+    s = reducer(s, actions.moveWindowTo(id, 300, 200));
+    const w = s.windows[0];
+    expect(w.floating).toBe(true);
+    expect(Number.isFinite(w.b.x)).toBe(true);
+    expect(Number.isFinite(w.b.y)).toBe(true);
+  });
+
+  it('clamps a moved window inside the viewport', () => {
+    let s = open(boot(), 'a');
+    const id = s.windows[0].id;
+    s = reducer(s, actions.moveWindowTo(id, 99999, 99999));
+    const { b } = s.windows[0];
+    expect(b.x + b.w).toBeLessThanOrEqual(1600);
+    expect(b.y).toBeGreaterThanOrEqual(40);
+  });
+
+  it('snaps to each quadrant with real geometry', () => {
+    for (const quad of [0, 1, 2, 3]) {
+      let s = open(boot(), 'a');
+      s = reducer(s, actions.snapWindowQuad(s.windows[0].id, quad));
+      const { b } = s.windows[0];
+      expect(Number.isFinite(b.w), `quad ${quad} width`).toBe(true);
+      expect(b.w, `quad ${quad} width`).toBeGreaterThan(0);
+      expect(b.h, `quad ${quad} height`).toBeGreaterThan(0);
+      expect(b.x + b.w, `quad ${quad} right`).toBeLessThanOrEqual(1601);
+    }
+  });
+
+  it('snaps to each half with real geometry', () => {
+    for (const half of [SN.LEFT, SN.RIGHT, SN.TOP, SN.BOTTOM]) {
+      let s = open(boot(), 'a');
+      s = reducer(s, actions.snapWindow(s.windows[0].id, half));
+      const w = s.windows[0];
+      expect(w.floating, `${half} floats`).toBe(true);
+      expect(w.sn, `${half} snap state`).toBe(half);
+      expect(w.b.w, `${half} width`).toBeGreaterThan(0);
+      expect(w.b.h, `${half} height`).toBeGreaterThan(0);
+    }
+  });
+
+  it('every action type the shell dispatches survives a round trip', () => {
+    // A crude but effective sweep: run each action against a live desktop and
+    // assert the reducer neither throws nor produces a broken window.
+    let s = openMany(boot(), ['a', 'b']);
+    const id = s.windows[0].id;
+    const sequence = [
+      actions.focusWindow(id),
+      actions.snapWindow(id, SN.LEFT),
+      actions.moveWindowTo(id, 100, 100),
+      actions.setWindowBounds(id, { x: 10, y: 50, w: 400, h: 300 }),
+      actions.snapWindowQuad(id, 2),
+      actions.toggleFloating(id),
+      actions.resizeTile(id, 'right'),
+      actions.moveWindowDirection(id, 'right'),
+      actions.focusDirection('left'),
+      actions.toggleMaximizeWindow(id),
+      actions.toggleMaximizeWindow(id),
+      actions.minimizeWindow(id),
+      actions.restoreWindow(id),
+      actions.moveWindowToWorkspace(id, 2),
+      actions.switchWorkspace(1),
+      actions.retileAll(),
+      actions.setEnv({ viewport: { w: 1024, h: 768 }, gap: 12 }),
+    ];
+    for (const action of sequence) {
+      s = reducer(s, action);
+      for (const w of s.windows) {
+        expect(Number.isFinite(w.b.x), `${action.type} x`).toBe(true);
+        expect(Number.isFinite(w.b.y), `${action.type} y`).toBe(true);
+        expect(w.b.w, `${action.type} width`).toBeGreaterThanOrEqual(0);
+        expect(w.b.h, `${action.type} height`).toBeGreaterThanOrEqual(0);
+      }
+    }
+    expect(s.windows).toHaveLength(2);
+  });
+});
+
 describe('focus', () => {
   it('never leaves a hidden window focused', () => {
     let s = openMany(boot(), ['a', 'b']);

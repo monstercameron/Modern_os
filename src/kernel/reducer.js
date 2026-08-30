@@ -348,12 +348,28 @@ export function reducer(state, action) {
       if (!action.id) return { ...state, activeId: null };
       const target = state.windows.find((w) => w.id === action.id);
       if (!target) return state;
+
       // Focusing a window on another workspace follows it there.
       const base =
         target.ws === state.workspaces.current
           ? state
           : { ...state, workspaces: { ...state.workspaces, current: target.ws } };
-      return raise({ ...base, activeId: action.id }, action.id);
+
+      /*
+       * Focusing a hidden window shows it.
+       *
+       * Without this, activeId could point at a minimized window: the keyboard
+       * would then be aimed at something not on the screen, so $mod+X closed a
+       * window the user could not see. Focus means "this is the window I am
+       * working in", which a hidden window cannot be — so it comes back, and
+       * the layout takes it in again.
+       */
+      if (!target.m) return raise({ ...base, activeId: action.id }, action.id);
+
+      const restored = step(target, WA.RESTORE);
+      if (!restored) return raise({ ...base, activeId: action.id }, action.id);
+      const shown = mapWindow(base, action.id, () => restored);
+      return retile(raise({ ...shown, activeId: action.id }, action.id), target.ws);
     }
 
     // ---------- display state ----------
@@ -574,7 +590,7 @@ export function reducer(state, action) {
         prevB: withRestorePoint(w),
         prevSN: w.sn,
         sn: SN.QUAD,
-        b: qb(action.quadIndex),
+        b: qb(action.quadIndex, viewport(state)),
         floating: true,
       }));
       return retile(
@@ -613,7 +629,7 @@ export function reducer(state, action) {
       const target = state.windows.find((w) => w.id === action.id);
       if (!target) return state;
       const next = mapWindow(state, action.id, (w) => {
-        const ghost = ghostFromPoint(w, { x: action.x, y: action.y });
+        const ghost = ghostFromPoint(w, { x: action.x, y: action.y }, viewport(state));
         return { ...w, sn: SN.NONE, floating: true, b: { ...w.b, x: ghost.x, y: ghost.y } };
       });
       return retile(
