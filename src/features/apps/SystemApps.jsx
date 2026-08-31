@@ -412,8 +412,18 @@ export function CalculatorApp() {
               <button key={i} onClick={() => setExpr(h.error ? h.expr : String(h.value))}
                 className="flex justify-between w-full text-[12px] font-mono py-0.5 text-left">
                 <Muted>{h.expr}</Muted>
-                <span style={{ color: h.error ? 'var(--theme-danger)' : 'var(--theme-text)' }}>
-                  {h.error ? 'error' : h.value}
+                {/*
+                  The reason, not just the word "error". The message was
+                  already there — evaluate() throws "only numbers and + - * /
+                  ( ) are allowed" — and the history threw it away, so a
+                  refused expression looked like a broken calculator.
+                */}
+                <span
+                  title={h.error || undefined}
+                  className="truncate pl-3"
+                  style={{ color: h.error ? 'var(--theme-danger)' : 'var(--theme-text)' }}
+                >
+                  {h.error || h.value}
                 </span>
               </button>
             ))}

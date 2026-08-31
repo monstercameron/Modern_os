@@ -511,17 +511,28 @@ export const Win = memo(function Win({ win, on, children, active, setActive, app
         ones you move, resize and stack.
 
         Everything the bar offered is still reachable while tiled: Ctrl+Shift+V
-        floats, Ctrl+Shift+X closes, Ctrl+Shift+Down minimizes, and the taskbar
+        floats, Ctrl+Shift+X closes, Ctrl+Shift+H hides, and the taskbar
         entry has the same actions on right-click.
       */}
       {win.floating && (
       <div
+        data-titlebar
         className="absolute top-0 left-0 right-0 z-10 flex items-center h-10"
         onContextMenu={(e) => handleWindowContextMenu(e)}
       >
-        {/* Center grab handle */}
-        <div 
-          className={`select-none flex-1 h-10 ${dragCur ? 'cursor-move' : 'cursor-default'}`}
+        {/*
+          The centre grab handle.
+
+          It was an empty div: the only draggable part of a floating window was
+          the small coloured strip on the right, so grabbing a window by the
+          obvious place — the wide bar across the top — did nothing at all.
+          It carries the same handlers as the strip now, and the cursor says so.
+        */}
+        <div
+          data-drag-handle
+          onPointerDownCapture={handlePointerDown}
+          onDoubleClick={handleDoubleClick}
+          className={`select-none flex-1 h-10 ${dragCur ? 'cursor-grabbing' : 'cursor-grab'}`}
         ></div>
         
         {/* Window controls on right - includes icon and buttons */}

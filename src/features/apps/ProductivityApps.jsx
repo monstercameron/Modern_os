@@ -103,7 +103,7 @@ export function TasksApp() {
 
         <form onSubmit={(e) => { e.preventDefault(); add(draft); }} className="flex gap-2">
           <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add a task and press Enter" />
-          <Button variant="accent" type="submit" disabled={!draft.trim()}><Plus size={13} /></Button>
+          <Button variant="accent" type="submit" disabled={!draft.trim()} aria-label="Add task"><Plus size={13} /></Button>
         </form>
 
         <div>
@@ -193,7 +193,7 @@ export function NotesApp() {
             setNotes((p) => [n, ...p]);
             setSelected(n.id);
             setMode('write');
-          }}><Plus size={12} /></Button>
+          }} aria-label="New note"><Plus size={12} /></Button>
         </>
       }
       sidebar={
@@ -284,7 +284,7 @@ export function CalendarApp() {
           <Button variant="ghost" onClick={() => setDay((d) => Math.max(0, d - 1))} aria-label="Previous day"><ChevronLeft size={13} /></Button>
           <span className="text-[12px] px-1 whitespace-nowrap">{labels[day]}</span>
           <Button variant="ghost" onClick={() => setDay((d) => Math.min(2, d + 1))} aria-label="Next day"><ChevronRight size={13} /></Button>
-          <Button variant="accent" onClick={() => setAdding(true)}><Plus size={12} /></Button>
+          <Button variant="accent" onClick={() => setAdding(true)} aria-label="Add event"><Plus size={12} /></Button>
         </>
       }
       console={{

@@ -81,6 +81,11 @@ export function TileInputs({ config, setConfig }) {
                   <button
                     key={`${cellCol}-${cellRow}`}
                     onClick={() => handleCellClick(cellCol, cellRow)}
+                    // Only the 1x1 cell carries a visible label, so without
+                    // this the size grid is fifteen buttons all announced as
+                    // "button" and unusable without sight.
+                    aria-label={`${cellCol} by ${cellRow} tile`}
+                    aria-pressed={selected}
                     className={`w-20 h-20 border-2 transition-all duration-200 ${
                       selected
                         ? 'border-blue-500 bg-blue-500/30 shadow-lg'
@@ -141,6 +146,10 @@ export function TileInputs({ config, setConfig }) {
             <button
               key={color}
               onClick={() => setConfig({ ...config, color })}
+              // A swatch is colour and nothing else; the name is the only
+              // thing a screen reader has to go on.
+              aria-label={color.replace(/^bg-/, '').replace(/-/g, ' ')}
+              aria-pressed={config.color === color}
               className={`w-8 h-8 rounded border-2 transition-all ${
                 config.color === color
                   ? 'border-white scale-110'

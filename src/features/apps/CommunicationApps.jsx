@@ -144,7 +144,7 @@ export function EmailApp() {
                   <Button onClick={() => { setDraft({ to: selected.from, subject: `Re: ${selected.subject}`, body: '' }); setComposing(true); }}>
                     <Reply size={12} /> Reply
                   </Button>
-                  <Button onClick={() => patch(selected.id, { folder: 'archive' })}><Archive size={12} /></Button>
+                  <Button onClick={() => patch(selected.id, { folder: 'archive' })} aria-label="Archive message"><Archive size={12} /></Button>
                   <Button variant="danger" onClick={() => setMail((prev) => prev.filter((m) => m.id !== selected.id))}>
                     <Trash2 size={12} />
                   </Button>
